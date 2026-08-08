@@ -1,0 +1,79 @@
+{
+  "bosses": [
+    {
+      "id": 1, "name": "짚단", "emoji": "🎃", "title": "허수아비 반장", "endurance": 2,
+      "trait": "몸이 짚이라 베기와 찌르기를 맞아도 별로 아프지 않지만, 불이 붙으면 걷잡을 수 없이 타오른다",
+      "personality": "훈련용 허수아비. 성실하고 예의 바르며 존댓말을 쓴다. 공격이 단순하고 정직해서 카운터 연습 상대로 완벽하다.",
+      "win_line": "이런, 제가 이겨버렸네요. 다시 도전해 주세요!",
+      "lose_line": "훌륭합니다! 이제 진짜 상대를 만나러 가세요.",
+      "skills": [
+        { "text": "짚주먹을 크게 휘둘러 정면을 후려친다", "tease": "정면으로 갑니다! 준비하세요!", "element": "earth", "cost": 17, "enraged": false },
+        { "text": "지푸라기를 뭉쳐 던진다", "tease": "무언가를 뭉치고 있다…", "element": "earth", "cost": 11, "enraged": false },
+        { "text": "머리의 호박을 굴려 돌진한다", "tease": "머리가 무거워 보인다…", "element": "earth", "cost": 13, "enraged": false },
+        { "text": "밀짚 회오리를 일으켜 시야를 가린다", "tease": "바람이 술렁이기 시작한다", "element": "wind", "cost": 16, "enraged": false },
+        { "text": "온몸의 짚을 곤두세워 가시방석 돌진을 한다", "tease": "온몸이 부풀어 오른다!", "element": "earth", "cost": 19, "enraged": true },
+        { "text": "가슴의 낡은 심장이 빛나며 짚단 병사 둘을 소환한다", "tease": "가슴이 빛나기 시작했다…!", "element": "light", "cost": 22, "enraged": true }
+      ]
+    },
+    {
+      "id": 2, "name": "벽염", "emoji": "🔥", "title": "화룡왕", "endurance": 3,
+      "trait": "몸이 화염 그 자체라 불로는 상처 입지 않고 주변의 불을 흡수해 힘으로 삼는다. 물과 냉기에 약하다",
+      "personality": "오만한 화염 정복자. 고어체 말투('~하노라', '~거라'). 화려하고 큰 기술을 선호하고, 자기 불꽃에 대한 자부심이 강해 불이 꺾이면 크게 동요한다.",
+      "win_line": "재가 되어 흩어지거라. 짐의 불꽃은 영원하노라.",
+      "lose_line": "짐의… 불꽃이… 꺼지다니…",
+      "skills": [
+        { "text": "하늘을 태우는 화염 폭풍을 소환한다", "tease": "하늘이 붉게 물들기 시작한다…!", "element": "fire", "cost": 16, "enraged": false },
+        { "text": "대지를 쪼개 용암 해일을 일으킨다", "tease": "발밑의 대지가 부글거린다", "element": "fire", "cost": 15, "enraged": false },
+        { "text": "불의 창 백 자루를 만들어 일제히 던진다", "tease": "허공에 불꽃들이 창의 형상으로 늘어선다", "element": "fire", "cost": 17, "enraged": false },
+        { "text": "날개를 펼쳐 잿빛 열풍으로 전장을 태운다", "tease": "거대한 날개가 천천히 펼쳐진다", "element": "wind", "cost": 18, "enraged": false },
+        { "text": "심장의 용옥을 태워 초신성 브레스를 내뿜는다", "tease": "벽염의 심장이 태양처럼 빛난다…!!", "element": "fire", "cost": 21, "enraged": true },
+        { "text": "제 몸을 불사르는 화룡의 마지막 격노를 터뜨린다", "tease": "벽염이 제 몸에 불을 붙이기 시작했다!!", "element": "fire", "cost": 20, "enraged": true }
+      ]
+    },
+    {
+      "id": 3, "name": "로가", "emoji": "🌊", "title": "심연의 책사", "endurance": 3,
+      "trait": "상대의 직전 기술을 기억해 같은 수는 두 번 통하지 않는다. 물이 있는 곳이면 어디로든 스며들어 이동한다",
+      "personality": "차분하고 지적인 물의 전략가. 정중한 존댓말. 정면 대결보다 흘리기·되돌리기를 선호한다. 상대의 기술을 읽고 받아치는 것을 즐긴다.",
+      "win_line": "좋은 수였습니다. 다만 세 수 앞이 보이더군요.",
+      "lose_line": "…이 수는 읽지 못했습니다. 훌륭합니다.",
+      "skills": [
+        { "text": "상대 기술의 기세를 물길로 흘려 되돌린다", "tease": "로가가 조용히 물의 진을 펼친다", "element": "water", "cost": 17, "enraged": false },
+        { "text": "깊은 바다의 수압으로 사방에서 짓누른다", "tease": "공기가 무거워진다… 숨이 막힌다", "element": "water", "cost": 16, "enraged": false },
+        { "text": "안개를 퍼뜨려 모습을 감추고 급소를 노린다", "tease": "짙은 안개가 깔리기 시작한다", "element": "wind", "cost": 18, "enraged": false },
+        { "text": "물거울을 세워 다가오는 공격을 비춰 복제한다", "tease": "수면이 거울처럼 잔잔해진다", "element": "water", "cost": 18, "enraged": false },
+        { "text": "전장을 통째로 심해로 끌어내려 수장시킨다", "tease": "발밑에서 소용돌이가 열리고 있다…!", "element": "water", "cost": 18, "enraged": true },
+        { "text": "빙하 파도를 일으켜 얼려서 부순다", "tease": "파도가 얼어붙으며 다가온다!", "element": "water", "cost": 14, "enraged": true }
+      ]
+    },
+    {
+      "id": 4, "name": "팽", "emoji": "⚡", "title": "번개 광대", "endurance": 3,
+      "trait": "예고와 실제 행동이 다를 수 있는 트릭스터. 온몸에 전기를 머금어 맨몸으로 닿는 상대를 감전시킨다",
+      "personality": "예측 불가능한 장난꾸러기 광대. 반말과 웃음('키히히')을 섞어 쓴다. 속임수와 방향 전환을 좋아하고, 예고와 다른 각도로 공격하는 것이 특기다.",
+      "win_line": "키히히! 뻔했어, 뻔했다고!",
+      "lose_line": "어라…? 이건… 예상 못 했는데…",
+      "skills": [
+        { "text": "번개 저글링 공 세 개를 각기 다른 각도로 던진다", "tease": "키히히, 어느 손에 들었게?", "element": "lightning", "cost": 20, "enraged": false },
+        { "text": "정전기 카펫을 깔아 발밑에서 감전시킨다", "tease": "바닥이 찌릿찌릿, 조심하라구?", "element": "lightning", "cost": 16, "enraged": false },
+        { "text": "가짜 몸을 만들고 진짜는 등 뒤에서 찌른다", "tease": "팽이 둘로 늘어났다…!", "element": "dark", "cost": 16, "enraged": false },
+        { "text": "천둥 나팔을 불어 고막을 뒤흔든다", "tease": "커다란 나팔을 꺼내 들었다", "element": "lightning", "cost": 13, "enraged": false },
+        { "text": "하늘의 뇌운을 통째로 끌어내려 무대를 감전시킨다", "tease": "키히히히!! 오늘의 피날레야!!", "element": "lightning", "cost": 21, "enraged": true },
+        { "text": "거꾸로 도는 회전목마에 태워 정신을 뒤흔든다", "tease": "빙글빙글~ 어지럽지 않아?", "element": "dark", "cost": 17, "enraged": true }
+      ]
+    },
+    {
+      "id": 5, "name": "묵혼", "emoji": "📖", "title": "그림자 사서", "endurance": 4,
+      "trait": "상대가 쓴 문장의 단어를 기억해 되돌려 쓸 수 있다. 그림자 속에 있는 동안은 실체가 없다",
+      "personality": "말과 글자를 지배하는 그림자 사서. 낮고 음산한 문어체. 상대가 쓴 문장 자체를 비틀어 무기로 삼는다. 침묵과 지우개를 무기로 쓰는 최종 보스.",
+      "win_line": "그대의 이야기는 여기서 절판되었다.",
+      "lose_line": "…이 결말은, 내 서가에 없던 책이다.",
+      "skills": [
+        { "text": "상대가 쓴 문장의 글자를 흩어 무의미하게 만든다", "tease": "그대의 문장이 낱글자로 떨리기 시작한다", "element": "dark", "cost": 19, "enraged": false },
+        { "text": "그림자 잉크를 쏟아 전장을 검게 물들인다", "tease": "발밑에서 검은 잉크가 번져 온다", "element": "dark", "cost": 17, "enraged": false },
+        { "text": "금서의 사슬을 풀어 사방에서 옭아맨다", "tease": "책장의 사슬이 절그럭거린다", "element": "dark", "cost": 15, "enraged": false },
+        { "text": "종이 폭풍을 일으켜 천 갈래의 베임을 새긴다", "tease": "서가의 책들이 일제히 펼쳐진다…!", "element": "wind", "cost": 17, "enraged": false },
+        { "text": "이야기의 결말 페이지를 찢어 상대의 다음 수를 지운다", "tease": "묵혼이 그대의 이야기가 적힌 책을 꺼내 들었다", "element": "dark", "cost": 21, "enraged": true },
+        { "text": "도서관 전체의 그림자를 모아 거대한 먹의 손을 내리친다", "tease": "모든 그림자가 한 점으로 모여든다…!!", "element": "dark", "cost": 22, "enraged": true }
+      ]
+    }
+  ]
+}
