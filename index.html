@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101014">
+  <title>한줄승부</title>
+  <link rel="stylesheet" href="./css/style.css">
+  <script type="importmap">{ "imports": { "three": "./libs/three.module.js" } }</script>
+</head>
+<body>
+  <main class="app-shell">
+    <section id="home" class="screen" aria-labelledby="home-title">
+      <header class="hero">
+        <p class="eyebrow">ONE-LINE DUEL</p>
+        <h1 id="home-title">한줄승부</h1>
+        <p>당신이 쓴 문장이 무기가 된다</p>
+      </header>
+      <div id="home-content"></div>
+    </section>
+
+    <section id="create" class="screen" aria-labelledby="create-title">
+      <header class="screen-header"><h2 id="create-title">캐릭터 만들기</h2></header>
+      <div id="create-content"></div>
+    </section>
+
+    <section id="battle" class="screen battle-screen" aria-label="배틀">
+      <div id="battle-content"></div>
+    </section>
+
+    <section id="result" class="screen" aria-label="결과">
+      <div id="result-content"></div>
+    </section>
+  </main>
+
+  <div id="tutorial-modal" class="modal" hidden></div>
+  <div id="settings-modal" class="modal" hidden></div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
