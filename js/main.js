@@ -464,7 +464,7 @@ function renderResult() {
   const lastNarration = [...battle.log].reverse().find((entry) => entry.type === "narration")?.text ?? "";
   document.querySelector("#result-content").innerHTML = `
     <div class="result-card">
-      <p class="result-kicker">한줄승부</p>
+      <p class="result-kicker">개초딩게임</p>
       <h2>${title}</h2>
       <p>${escapeHtml(subtitle)}</p>
       <p class="record-line">${battle.turn}턴 · 부상 ${"🩸".repeat(battle.p1.wounds)} · 발악 ${battle.p1.lastStandUsed ? "사용" : "미사용"}</p>

@@ -22,8 +22,13 @@ function loadEnv(filePath = path.join(SERVER_DIR, ".env")) {
 const env = { ...loadEnv(), ...process.env };
 const PORT = Number(env.PORT || 8787);
 const BOT_WAIT_MS = Number(env.BOT_WAIT_MS || 5_000);
+const JUDGE_PROMPT = fs.readFileSync(path.join(ROOT_DIR, "JUDGE_PROMPT.md"), "utf8");
+const schemaMatch = JUDGE_PROMPT.match(/## 응답 JSON 스키마[\s\S]*?```json\s*([\s\S]*?)```/);
+const JUDGMENT_SCHEMA = schemaMatch ? JSON.parse(schemaMatch[1]) : null;
 
 const KEYWORD_RULES = [
+  { words: ["용", "드래곤", "괴수"], element: "fire", motion: "summon" },
+  { words: ["마법", "마법봉", "주문", "마술"], element: "light", motion: "cast" },
   { words: ["불", "화염", "용암", "태우"], element: "fire", motion: "flame" },
   { words: ["물", "파도", "해일", "얼음", "얼려"], element: "water", motion: "water_burst" },
   { words: ["번개", "전기", "벼락"], element: "lightning", motion: "bolt" },
@@ -38,6 +43,14 @@ const KEYWORD_RULES = [
   { words: ["폭발", "터뜨"], element: "fire", motion: "explosion" },
   { words: ["회복", "치유", "낫"], element: "heal", motion: "heal_aura" },
   { words: ["소환", "불러"], motion: "summon" },
+  { words: ["활", "화살"], motion: "shoot" },
+  { words: ["주먹", "펀치", "연타"], motion: "punch_rush" },
+  { words: ["발차기", "킥"], motion: "kick" },
+  { words: ["지진", "대지", "땅을"], element: "earth", motion: "quake" },
+  { words: ["던지", "투척"], motion: "throw" },
+  { words: ["묶", "속박", "사슬"], motion: "bind" },
+  { words: ["은신", "투명"], element: "dark", motion: "stealth" },
+  { words: ["기 모", "충전", "각성"], element: "light", motion: "charge_up" },
 ];
 
 const BOT_MOVES = [
@@ -49,7 +62,12 @@ const BOT_MOVES = [
 ];
 
 function tagsFor(text) {
-  return KEYWORD_RULES.find(({ words }) => words.some((word) => text.includes(word))) || { motion: "punch_rush" };
+  const matches = KEYWORD_RULES.filter(({ words }) => words.some((word) => text.includes(word)));
+  if (!matches.length) return { motions: ["punch_rush"] };
+  return {
+    element: matches.find((rule) => rule.element)?.element,
+    motions: [...new Set(matches.map((rule) => rule.motion))].slice(0, 2),
+  };
 }
 
 function validatePayload(payload) {
@@ -87,9 +105,58 @@ export function createMockJudgment(payload) {
     p1: { wound: p1Wound, recover: 0, add_statuses: [], shout: p2Wound ? "간다!" : "…버텨!" },
     p2: { wound: p2Wound, recover: 0, add_statuses: [], shout: p1Wound ? "받아라!" : "제법이군!" },
     effects,
-    motions: [{ actor: "p2", motion: p2Tags.motion }, { actor: "p1", motion: p1Tags.motion }],
+    motions: [
+      ...p2Tags.motions.map((motion) => ({ actor: "p2", motion })),
+      ...p1Tags.motions.map((motion) => ({ actor: "p1", motion })),
+    ].slice(0, 3),
     verdict: costDiff > 0 ? "p2_hit" : costDiff < 0 ? "p1_hit" : "block",
   };
+}
+
+function userMessage(payload) {
+  const woundName = (wounds) => ["건재", "경상", "중상", "빈사"][Math.min(3, wounds)] || "건재";
+  const fighter = (label, side) => {
+    const data = payload[side];
+    return `[${label}] 이름:${data.name} 속성:${data.trait}\n` +
+      `부상:${data.wounds}(${woundName(data.wounds)}) 상태:${data.statuses.join(",") || "없음"} ` +
+      `발악:${data.last_stand ? "예" : "아니오"} 코스트:${data.cost}` +
+      `${data.personality ? ` 말투:${data.personality}` : ""}\n기술: ${data.text}`;
+  };
+  return `[필드] ${payload.field || "없음"}\n[턴] ${payload.turn}\n${fighter("p1", "p1")}\n${fighter("p2", "p2")}`;
+}
+
+async function requestAiJudgment(payload) {
+  if (!env.OPENAI_API_KEY || !JUDGMENT_SCHEMA) return createMockJudgment(payload);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12_000);
+  try {
+    const apiResponse = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+      body: JSON.stringify({
+        model: env.OPENAI_MODEL || "gpt-5-mini",
+        instructions: JUDGE_PROMPT,
+        input: userMessage(payload),
+        max_output_tokens: 500,
+        text: { format: { type: "json_schema", name: "judgment", strict: true, schema: JUDGMENT_SCHEMA } },
+      }),
+      signal: controller.signal,
+    });
+    if (!apiResponse.ok) throw new Error(`OpenAI ${apiResponse.status}`);
+    const body = await apiResponse.json();
+    const outputText = body.output?.flatMap((item) => item.content || [])
+      .find((content) => content.type === "output_text")?.text;
+    if (!outputText) throw new Error("empty_output");
+    return JSON.parse(outputText);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function judgePayload(payload) {
+  if (env.MOCK === "1" || !env.OPENAI_API_KEY) return createMockJudgment(payload);
+  try { return await requestAiJudgment(payload); }
+  catch { return createMockJudgment(payload); }
 }
 
 export function tierFor(rating) {
@@ -191,10 +258,10 @@ function updateRating(match) {
   saveProfiles();
 }
 
-function resolveMatch(match) {
+async function resolveMatch(match) {
   if (!match.submitted.p1 || !match.submitted.p2) return;
   const payload = buildJudgePayload(match.battle, match.submitted.p1, match.submitted.p2);
-  const judgment = createMockJudgment(payload);
+  const judgment = await judgePayload(payload);
   match.battle.log.push({ type: "skill", who: "p1", text: `${match.players.p1.character.name}: ${match.submitted.p1}` });
   match.battle.log.push({ type: "skill", who: "p2", text: `${match.players.p2.character.name}: ${match.submitted.p2}` });
   resolveTurn(match.battle, judgment);
@@ -254,8 +321,7 @@ const server = http.createServer(async (request, response) => {
       const payload = await readJson(request);
       const error = validatePayload(payload);
       if (error) return sendJson(response, 400, { error });
-      if (env.MOCK !== "1") return sendJson(response, 503, { error: "실제 판정 연동은 아직 활성화되지 않았습니다." });
-      return sendJson(response, 200, createMockJudgment(payload));
+      return sendJson(response, 200, await judgePayload(payload));
     }
     if (request.method === "POST" && url.pathname === "/pvp/profile") {
       const body = await readJson(request);
@@ -299,7 +365,7 @@ const server = http.createServer(async (request, response) => {
         validateInput(match.battle, opponentSide, move);
         match.submitted[opponentSide] = move;
       }
-      resolveMatch(match);
+      await resolveMatch(match);
       return sendJson(response, 200, matchView(match, body.playerId));
     }
     if (request.method === "POST" && url.pathname === "/pvp/leave") {
@@ -321,5 +387,6 @@ const server = http.createServer(async (request, response) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`한줄승부 서버: http://localhost:${PORT} (봇 대기 ${BOT_WAIT_MS / 1000}초)`);
+  const judgeMode = env.MOCK === "1" || !env.OPENAI_API_KEY ? "MOCK" : env.OPENAI_MODEL || "gpt-5-mini";
+  console.log(`개초딩게임 서버: http://localhost:${PORT} (판정 ${judgeMode}, 봇 대기 ${BOT_WAIT_MS / 1000}초)`);
 });

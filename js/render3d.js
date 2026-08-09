@@ -9,6 +9,7 @@ let phase = "idle";
 let clock;
 let running = false;
 let orbitAngle = 0;
+let shakePower = 0;
 
 const COLORS = { p1: 0x3ca8ff, p2: 0xff5a3c };
 const EFFECT_COLORS = {
@@ -53,12 +54,14 @@ function makeActor(side) {
   root.rotation.y = side === "p1" ? Math.PI / 2 : -Math.PI / 2;
   root.userData.homeX = root.position.x;
   root.userData.side = side;
+  root.userData.wounds = 0;
   scene.add(root);
   return joints;
 }
 
 function resetPose(actor) {
-  actor.torso.rotation.set(0, 0, 0);
+  const lean = Math.max(0, actor.root.userData.wounds - 1) * 0.16;
+  actor.torso.rotation.set(0, 0, actor.root.userData.side === "p1" ? lean : -lean);
   actor.armL.rotation.set(0, 0, -0.18);
   actor.armR.rotation.set(0, 0, 0.18);
   actor.legL.rotation.set(0, 0, -0.08);
@@ -66,6 +69,52 @@ function resetPose(actor) {
   actor.root.position.x = actor.root.userData.homeX;
   actor.root.position.y = 0;
   actor.root.scale.setScalar(1);
+}
+
+function makeBeam(from, to, color) {
+  const length = from.distanceTo(to);
+  const beam = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.08, 0.13, length, 12),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.95 }),
+  );
+  beam.position.copy(from).add(to).multiplyScalar(0.5);
+  beam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), to.clone().sub(from).normalize());
+  scene.add(beam);
+  return tween(420, (eased) => {
+    beam.scale.x = 1 + Math.sin(eased * Math.PI) * 1.8;
+    beam.scale.z = beam.scale.x;
+    beam.material.opacity = 1 - eased * 0.85;
+  }).then(() => scene.remove(beam));
+}
+
+function summonDragon(from, to, direction) {
+  const dragon = new THREE.Group();
+  const material = new THREE.MeshStandardMaterial({ color: 0xff5b24, emissive: 0x661500, roughness: 0.5 });
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.7, 5, 10), material);
+  body.rotation.z = Math.PI / 2;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 10), material);
+  head.position.x = direction * 0.5;
+  const wingGeometry = new THREE.ConeGeometry(0.42, 0.78, 3);
+  const wingL = new THREE.Mesh(wingGeometry, material);
+  const wingR = wingL.clone();
+  wingL.position.set(0, 0.28, -0.25);
+  wingR.position.set(0, 0.28, 0.25);
+  wingL.rotation.x = 1.15;
+  wingR.rotation.x = -1.15;
+  dragon.add(body, head, wingL, wingR);
+  dragon.position.copy(from).add(new THREE.Vector3(0, 0.6, 0));
+  dragon.scale.setScalar(0.15);
+  scene.add(dragon);
+  return tween(900, (eased, linear) => {
+    dragon.position.lerpVectors(from.clone().add(new THREE.Vector3(0, 0.6, 0)), to.clone().add(new THREE.Vector3(0, 0.8, 0)), eased);
+    dragon.position.y += Math.sin(linear * Math.PI * 3) * 0.28;
+    dragon.scale.setScalar(0.15 + Math.sin(Math.min(1, linear * 1.8) * Math.PI / 2) * 0.85);
+    wingL.rotation.z = Math.sin(linear * Math.PI * 8) * 0.45;
+    wingR.rotation.z = -wingL.rotation.z;
+  }).then(() => {
+    burst(to.clone().add(new THREE.Vector3(0, 1.2, 0)), 0xff5522, 48);
+    scene.remove(dragon);
+  });
 }
 
 function tween(duration, update) {
@@ -113,12 +162,27 @@ async function animateMotion({ actor: side, motion }) {
   const origin = actor.root.position.clone().add(new THREE.Vector3(0, 1.5, 0));
   const destination = target.root.position.clone().add(new THREE.Vector3(0, 1.45, 0));
 
-  if (["shoot", "laser", "flame", "water_burst", "bolt", "gust", "throw", "cast", "summon"].includes(motion)) {
+  if (motion === "summon") {
+    actor.armL.rotation.z = direction * 1.5;
+    actor.armR.rotation.z = -direction * 1.5;
+    burst(origin, 0x9a56ff, 32);
+    await summonDragon(origin, destination, direction);
+  } else if (motion === "cast") {
+    actor.armR.rotation.z = -direction * 1.7;
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.04, 8, 32), new THREE.MeshBasicMaterial({ color: 0xb783ff }));
+    ring.position.copy(origin).add(new THREE.Vector3(direction * 0.35, 0.35, 0));
+    ring.rotation.y = Math.PI / 2;
+    scene.add(ring);
+    await tween(580, (eased) => { ring.rotation.z = eased * Math.PI * 3; ring.scale.setScalar(0.4 + eased); });
+    scene.remove(ring);
+    await projectile(origin, destination, 0xb783ff, 0.15);
+  } else if (["shoot", "laser", "flame", "water_burst", "bolt", "gust", "throw"].includes(motion)) {
     actor.armR.rotation.z = -direction * 1.35;
     actor.torso.rotation.z = -direction * 0.12;
     const color = motion === "flame" ? 0xff5522 : motion === "water_burst" ? 0x35a7ff
       : motion === "bolt" ? 0xffff66 : motion === "gust" ? 0xb9f3df : 0xffffff;
-    await projectile(origin, destination, color, motion === "laser" ? 0.18 : 0.11);
+    if (motion === "laser") await makeBeam(origin, destination, color);
+    else await projectile(origin, destination, color, 0.11);
     burst(destination, color, motion === "flame" ? 34 : 20);
   } else if (motion === "teleport") {
     await tween(180, (eased) => actor.root.scale.setScalar(1 - eased));
@@ -164,15 +228,27 @@ function renderLoop() {
   requestAnimationFrame(renderLoop);
   const elapsed = clock.getElapsedTime();
   if (phase === "typing" && actors) {
-    orbitAngle += 0.0014;
+    orbitAngle = elapsed * 0.105;
     camera.position.x = Math.sin(orbitAngle) * 0.65;
     camera.position.z = 6.7 + Math.cos(orbitAngle) * 0.25;
+    actors.p1.root.position.x = actors.p1.root.userData.homeX + Math.sin(elapsed * 0.45) * 0.11;
+    actors.p2.root.position.x = actors.p2.root.userData.homeX - Math.sin(elapsed * 0.45) * 0.11;
+    actors.p1.root.position.z = Math.cos(elapsed * 0.45) * 0.16;
+    actors.p2.root.position.z = -Math.cos(elapsed * 0.45) * 0.16;
     actors.p1.root.position.y = Math.sin(elapsed * 1.4) * 0.025;
     actors.p2.root.position.y = Math.sin(elapsed * 1.4 + Math.PI) * 0.025;
-    actors.p1.armR.rotation.z = 0.18 + Math.sin(elapsed * 0.8) * 0.08;
-    actors.p2.armR.rotation.z = 0.18 + Math.sin(elapsed * 0.8 + 1) * 0.08;
+    const feint1 = Math.max(0, Math.sin(elapsed * 1.7) - 0.92) * 8;
+    const feint2 = Math.max(0, Math.sin(elapsed * 1.7 + 2.4) - 0.92) * 8;
+    actors.p1.armR.rotation.z = 0.18 - feint1;
+    actors.p2.armR.rotation.z = 0.18 + feint2;
   }
+  camera.position.y = 2.8;
   camera.lookAt(0, 1.25, 0);
+  if (shakePower > 0.002) {
+    camera.rotation.z += (Math.random() - 0.5) * shakePower;
+    camera.position.y += (Math.random() - 0.5) * shakePower * 0.12;
+    shakePower *= 0.88;
+  }
   renderer.render(scene, camera);
 }
 
@@ -215,17 +291,34 @@ export function setPhase(nextPhase) { phase = nextPhase; }
 
 export async function playTurn(motions = [], effects = [], onDone = () => {}) {
   phase = "resolving";
+  const strongest = [...effects].sort((a, b) => b.intensity - a.intensity)[0];
+  const cameraStart = camera.position.clone();
+  if (strongest && actors[strongest.target]) {
+    const targetX = actors[strongest.target].root.position.x * 0.34;
+    if (strongest.intensity === 3) {
+      await tween(280, (eased) => {
+        camera.position.x = THREE.MathUtils.lerp(cameraStart.x, targetX, eased);
+        camera.position.z = THREE.MathUtils.lerp(cameraStart.z, 5.55, eased);
+      });
+    }
+    shakePower = strongest.intensity * 0.035;
+  }
   for (const effect of effects) {
     const target = actors[effect.target]?.root.position.clone().add(new THREE.Vector3(0, 1.3, 0));
     if (target) burst(target, EFFECT_COLORS[effect.type] || 0xffffff, 12 + effect.intensity * 8);
   }
   for (const motion of motions) await animateMotion(motion);
+  const cameraReturnStart = camera.position.clone();
+  await tween(320, (eased) => camera.position.lerpVectors(cameraReturnStart, cameraStart, eased));
   phase = "typing";
   onDone();
 }
 
 export function setWounds(side, wounds) {
-  if (actors?.[side]) actors[side].torso.rotation.z = (side === "p1" ? 1 : -1) * Math.max(0, wounds - 1) * 0.16;
+  if (actors?.[side]) {
+    actors[side].root.userData.wounds = wounds;
+    resetPose(actors[side]);
+  }
 }
 
 export function lastStand(side) {

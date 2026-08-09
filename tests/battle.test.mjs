@@ -74,6 +74,12 @@ const p2 = { name: "짚단", trait: "짚이다", endurance: 2, personality: "정
   const result = fallbackJudgment(payload);
   assert.equal(result.p2.wound, 2);
   assert.equal(result.motions[1].motion, "flame");
+
+  const dragonResult = fallbackJudgment({
+    p1: { name: "민수", text: "거대한 용을 소환해 화염을 내뿜는다", cost: 18 },
+    p2: { name: "짚단", text: "주먹", cost: 2 },
+  });
+  assert.deepEqual(dragonResult.motions.slice(1).map(({ motion }) => motion), ["summon", "flame"]);
 }
 
 console.log("전투 로직 검증 완료");

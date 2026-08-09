@@ -1,9 +1,8 @@
 $ErrorActionPreference = "Stop"
-$env:MOCK = "1"
 $judge = Start-Process -FilePath "node" -ArgumentList "server/server.mjs" -WindowStyle Hidden -PassThru
 
 try {
-  Write-Host "한줄승부: http://localhost:8000"
+  Write-Host "개초딩게임: http://localhost:8000"
   $lanAddress = Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
     Where-Object { $_.IPAddress -notlike "127.*" -and $_.PrefixOrigin -ne "WellKnown" } |
     Select-Object -First 1 -ExpandProperty IPAddress

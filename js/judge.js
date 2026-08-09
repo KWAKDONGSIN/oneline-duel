@@ -1,6 +1,8 @@
 const DEFAULT_JUDGE_URL = "http://localhost:8787";
 
 const KEYWORD_RULES = [
+  { words: ["용", "드래곤", "괴수"], element: "fire", motion: "summon" },
+  { words: ["마법", "마법봉", "주문", "마술"], element: "light", motion: "cast" },
   { words: ["불", "화염", "용암", "태우"], element: "fire", motion: "flame" },
   { words: ["물", "파도", "해일", "얼음", "얼려"], element: "water", motion: "water_burst" },
   { words: ["번개", "전기", "벼락"], element: "lightning", motion: "bolt" },
@@ -15,10 +17,23 @@ const KEYWORD_RULES = [
   { words: ["폭발", "터뜨"], element: "fire", motion: "explosion" },
   { words: ["회복", "치유", "낫"], element: "heal", motion: "heal_aura" },
   { words: ["소환", "불러"], motion: "summon" },
+  { words: ["활", "화살"], motion: "shoot" },
+  { words: ["주먹", "펀치", "연타"], motion: "punch_rush" },
+  { words: ["발차기", "킥"], motion: "kick" },
+  { words: ["지진", "대지", "땅을"], element: "earth", motion: "quake" },
+  { words: ["던지", "투척"], motion: "throw" },
+  { words: ["묶", "속박", "사슬"], motion: "bind" },
+  { words: ["은신", "투명"], element: "dark", motion: "stealth" },
+  { words: ["기 모", "충전", "각성"], element: "light", motion: "charge_up" },
 ];
 
 function mappedTags(text) {
-  return KEYWORD_RULES.find(({ words }) => words.some((word) => text.includes(word))) ?? { motion: "punch_rush" };
+  const matches = KEYWORD_RULES.filter(({ words }) => words.some((word) => text.includes(word)));
+  if (!matches.length) return { motions: ["punch_rush"] };
+  return {
+    element: matches.find((rule) => rule.element)?.element,
+    motions: [...new Set(matches.map((rule) => rule.motion))].slice(0, 2),
+  };
 }
 
 export function fallbackJudgment(payload) {
@@ -36,9 +51,9 @@ export function fallbackJudgment(payload) {
     p2: { wound: difference > 0 ? damage : 0, recover: 0, add_statuses: [], shout: "" },
     effects,
     motions: [
-      { actor: "p2", motion: p2Tags.motion },
-      { actor: "p1", motion: p1Tags.motion },
-    ],
+      ...p2Tags.motions.map((motion) => ({ actor: "p2", motion })),
+      ...p1Tags.motions.map((motion) => ({ actor: "p1", motion })),
+    ].slice(0, 3),
     verdict: difference > 0 ? "p2_hit" : difference < 0 ? "p1_hit" : "block",
     _fallback: true,
   };
