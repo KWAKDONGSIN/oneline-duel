@@ -1,2 +1,5 @@
 server/.env
 server/runtime-players.json
+
+worker/.wrangler/
+node_modules/
