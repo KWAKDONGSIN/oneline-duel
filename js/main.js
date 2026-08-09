@@ -18,6 +18,16 @@ import {
   submitOnlineAction,
 } from "./multiplayer.js";
 import * as render3d from "./render3d.js";
+import {
+  fieldMusicList,
+  initAudio,
+  playFieldMusic,
+  playSfx,
+  playTitleMusic,
+  setMusicEnabled,
+  setSfxEnabled,
+  stopMusic,
+} from "./audio.js";
 import { loadData, saveCharacter, saveData, saveSettings } from "./storage.js";
 import { initSession, isLoggedIn, signIn, signOut } from "./auth.js";
 import { AUTH_ENABLED, PROVIDERS } from "./supabase-config.js";
@@ -107,7 +117,16 @@ function renderHome() {
       <button class="button" data-action="challenge">보스 도전</button>
       <button class="button" data-action="ranking">랭킹</button>
       <button class="button" data-action="settings">설정</button>
-    </div>`;
+    </div>
+    <section class="jukebox panel">
+      <h3>필드 음악 감상</h3>
+      <p>전투 중 필드가 바뀌면 이 음악들이 흐릅니다. 눌러서 들어보세요.</p>
+      <div class="jukebox-grid">
+        <button data-track="title">🌈 메인 테마</button>
+        ${fieldMusicList().map((f) => `<button data-track="${f.id}">${escapeHtml(f.name)}</button>`).join("")}
+        <button data-track="stop">⏹ 정지</button>
+      </div>
+    </section>`;
 
   document.querySelector('[data-action="edit"]')?.addEventListener("click", () => openCharacterForm(character));
   document.querySelector('[data-action="challenge"]').addEventListener("click", () => {
@@ -118,6 +137,18 @@ function renderHome() {
   document.querySelector('[data-action="casual"]').addEventListener("click", () => startOnlineMatch("casual"));
   document.querySelector('[data-action="ranking"]').addEventListener("click", renderRanking);
   document.querySelector('[data-action="settings"]').addEventListener("click", openSettings);
+  document.querySelectorAll("[data-track]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const track = button.dataset.track;
+      startAudioOnce();
+      if (track === "stop") stopMusic();
+      else if (track === "title") playTitleMusic();
+      else playFieldMusic(Number(track));
+      document.querySelectorAll("[data-track]").forEach((b) => b.classList.remove("playing"));
+      if (track !== "stop") button.classList.add("playing");
+      playSfx("click");
+    });
+  });
   renderAccountBar();
   if (character) {
     fetchProfile(character.name).then(({ profile }) => {
@@ -172,15 +203,29 @@ function openSettings() {
   modal.innerHTML = `
     <form id="settings-form" class="modal-card form-stack">
       <h2>설정</h2>
+      <h3 class="settings-group">소리</h3>
+      <label class="toggle"><input id="sfx" type="checkbox" ${settings.sfx ? "checked" : ""}> 효과음</label>
+      <label class="toggle"><input id="music" type="checkbox" ${settings.music ? "checked" : ""}> 배경음악</label>
+      <h3 class="settings-group">판정</h3>
       <label class="toggle"><input id="offline" type="checkbox" ${settings.offline ? "checked" : ""}> 오프라인 모드 (AI 심판 없이 약식 판정)</label>
       <label>판정 서버 주소<input id="judge-url" placeholder="http://localhost:8787" value="${escapeHtml(settings.judgeUrl)}"></label>
       <button class="button primary" type="submit">저장</button>
     </form>`;
   modal.hidden = false;
   modal.onclick = (event) => { if (event.target === modal) modal.hidden = true; };
+  // 켜고 끄는 즉시 반영해서 바로 들어볼 수 있게 한다.
+  document.querySelector("#sfx").addEventListener("change", (event) => {
+    setSfxEnabled(event.target.checked);
+    if (event.target.checked) playSfx("click");
+  });
+  document.querySelector("#music").addEventListener("change", (event) => {
+    setMusicEnabled(event.target.checked);
+  });
   document.querySelector("#settings-form").addEventListener("submit", (event) => {
     event.preventDefault();
     saveSettings({
+      sfx: document.querySelector("#sfx").checked,
+      music: document.querySelector("#music").checked,
       offline: document.querySelector("#offline").checked,
       judgeUrl: document.querySelector("#judge-url").value.trim() || "http://localhost:8787",
     });
@@ -305,6 +350,7 @@ function renderBattle() {
   document.querySelector("#skill-form").addEventListener("submit", submitSkill);
   render3d.init(document.querySelector("#stage"));
   render3d.setField(battle.field);
+  playFieldMusic(battle.field?.id);   // 필드가 바뀌면 그 필드의 음악으로 갈아탄다
   render3d.setPhase("typing");
   render3d.setWounds("p1", p1.wounds);
   render3d.setWounds("p2", p2.wounds);
@@ -439,6 +485,7 @@ function renderOnlineBattle(state) {
 
   render3d.init(document.querySelector("#stage"));
   render3d.setField(state.battle.field);
+  playFieldMusic(state.battle.field?.id);
   render3d.setPhase(state.submitted ? "resolving" : "typing");
   render3d.setWounds("p1", state.battle.p1.wounds);
   render3d.setWounds("p2", state.battle.p2.wounds);
@@ -500,16 +547,20 @@ function renderResult() {
   const won = battle.winner === "p1";
   const draw = battle.winner === "draw";
   if (won) recordBossVictory();
+  stopMusic();
+  playSfx(draw ? "click" : won ? "win" : "lose");
   const hasNext = won && bossIndex + 1 < gameData.bosses.length;
   const nextBoss = hasNext ? gameData.bosses[bossIndex + 1] : null;
   const title = draw ? "무승부" : won ? "승리!" : "패배…";
   const subtitle = draw ? "12턴의 사투 끝에 승부를 가리지 못했다"
     : won ? `${boss.title} ${boss.name} 격파` : `${boss.name}의 승리`;
   const lastNarration = [...battle.log].reverse().find((entry) => entry.type === "narration")?.text ?? "";
+  const outcome = draw ? "draw" : won ? "win" : "lose";
   document.querySelector("#result-content").innerHTML = `
-    <div class="result-card">
+    <div class="result-card outcome-${outcome}">
+      ${won ? `<div class="burst-ring" aria-hidden="true"></div>` : ""}
       <p class="result-kicker">무지개 반사</p>
-      <h2>${title}</h2>
+      <h2 class="outcome-title">${title}</h2>
       <p>${escapeHtml(subtitle)}</p>
       <p class="record-line">${battle.turn}턴 · 부상 ${"🩸".repeat(battle.p1.wounds)} · 발악 ${battle.p1.lastStandUsed ? "사용" : "미사용"}</p>
       <div class="highlight"><small>이 판의 명장면</small><p>${escapeHtml(lastNarration)}</p></div>
@@ -704,7 +755,24 @@ async function initAccount() {
   if (gameData) renderHome();
 }
 
-window.addEventListener("hashchange", () => renderRoute());
+// 브라우저는 사용자가 화면을 한 번 건드리기 전에는 소리를 못 내게 막는다.
+// 그래서 첫 클릭·터치·키 입력 때 오디오를 열고 메인 테마를 시작한다.
+let audioStarted = false;
+function startAudioOnce() {
+  if (audioStarted) return;
+  audioStarted = true;
+  const settings = loadData().settings;
+  initAudio({ sfx: settings.sfx !== false, music: settings.music !== false });
+  render3d.setMotionListener(playSfx);   // 3D 모션이 시작될 때마다 그 동작의 효과음
+  if (routeFromHash() === "home") playTitleMusic();
+}
+["pointerdown", "keydown", "touchstart"].forEach((type) =>
+  window.addEventListener(type, startAudioOnce, { once: true, passive: true }));
+
+window.addEventListener("hashchange", () => {
+  renderRoute();
+  if (routeFromHash() === "home" && audioStarted) playTitleMusic();   // 홈으로 돌아오면 메인 테마
+});
 applyTheme(currentTheme());   // 저장된 테마를 첫 화면부터 적용한다
 renderRoute();
 loadGameData().then(initAccount);

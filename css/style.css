@@ -293,3 +293,86 @@ body[data-theme="light"] .hero-art .face { stroke: #16161c; }
   cursor: pointer;
 }
 .theme-toggle:hover { background: var(--panel-2); }
+
+/* ── 승패 연출 ───────────────────────────────────────────── */
+.result-card { position: relative; overflow: hidden; }
+
+/* 승리: 제목이 튀어오르고 무지개 빛이 뒤에서 번진다 */
+.outcome-win .outcome-title {
+  animation: winPop 0.7s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+  background: linear-gradient(90deg, #ff3b30, #ff9500, #ffd60a, #34c759, #0a84ff, #af52de);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+@keyframes winPop {
+  0% { transform: scale(0.5) rotate(-8deg); opacity: 0; }
+  60% { transform: scale(1.18) rotate(3deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+.burst-ring {
+  position: absolute;
+  left: 50%; top: 78px;
+  width: 12px; height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  border: 3px solid var(--gold);
+  animation: burstRing 1.1s ease-out 0.1s 2 both;
+  pointer-events: none;
+}
+@keyframes burstRing {
+  0% { transform: scale(1); opacity: 0.9; }
+  100% { transform: scale(34); opacity: 0; }
+}
+.outcome-win .record-line, .outcome-win .highlight { animation: fadeUp 0.5s ease-out 0.45s both; }
+
+/* 패배: 제목이 무겁게 내려앉고 화면이 한 번 흔들린다 */
+.outcome-lose { animation: loseShake 0.5s ease-out both; }
+.outcome-lose .outcome-title {
+  animation: loseDrop 0.9s cubic-bezier(0.3, 0, 0.2, 1) both;
+  color: var(--danger);
+}
+@keyframes loseDrop {
+  0% { transform: translateY(-24px) scale(1.1); opacity: 0; letter-spacing: 0.2em; }
+  100% { transform: translateY(0) scale(1); opacity: 0.85; letter-spacing: -0.02em; }
+}
+@keyframes loseShake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-9px); }
+  30% { transform: translateX(8px); }
+  45% { transform: translateX(-5px); }
+  60% { transform: translateX(4px); }
+  80% { transform: translateX(-2px); }
+}
+.outcome-lose .record-line, .outcome-lose .highlight { animation: fadeUp 0.5s ease-out 0.5s both; }
+
+@keyframes fadeUp {
+  from { transform: translateY(10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .outcome-win .outcome-title, .outcome-lose .outcome-title,
+  .outcome-lose, .burst-ring,
+  .outcome-win .record-line, .outcome-lose .record-line,
+  .outcome-win .highlight, .outcome-lose .highlight { animation: none; }
+  .burst-ring { display: none; }
+}
+
+/* ── 필드 음악 감상 ──────────────────────────────────────── */
+.settings-group { margin: 14px 0 2px; font-size: 0.85rem; color: var(--sub); letter-spacing: 0.06em; }
+.jukebox { margin-top: 18px; }
+.jukebox h3 { margin: 0 0 4px; font-size: 0.95rem; }
+.jukebox p { margin: 0 0 10px; font-size: 0.8rem; color: var(--sub); }
+.jukebox-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.jukebox-grid button {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.jukebox-grid button:hover { border-color: var(--gold); }
+.jukebox-grid button.playing { border-color: var(--gold); color: var(--gold); }

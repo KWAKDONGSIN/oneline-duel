@@ -17,6 +17,10 @@ let dirLight;
 let motes;          // 필드 분위기를 만드는 떠다니는 입자
 let moteFall = 0;   // 0이면 부유, 1이면 비처럼 떨어짐
 let moteCount = 0;
+let onMotion = null;   // 모션 시작 알림 (효과음 연결용)
+
+// 모션이 재생될 때마다 호출될 함수를 등록한다. 렌더러가 소리를 직접 다루지 않게 분리했다.
+export function setMotionListener(fn) { onMotion = fn; }
 
 // 현재 무대 상태. 필드 배경이 제대로 적용됐는지 확인할 때 쓴다.
 export function stageState() {
@@ -201,6 +205,7 @@ function burst(position, color, count = 22) {
 }
 
 async function animateMotion({ actor: side, motion }) {
+  onMotion?.(motion);   // 동작이 시작되는 순간에 그 동작의 효과음을 낸다
   const actor = actors[side];
   const target = actors[side === "p1" ? "p2" : "p1"];
   resetPose(actor);
