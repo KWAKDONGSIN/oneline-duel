@@ -10,6 +10,14 @@ import {
 import { pickSkill } from "./boss.js";
 import { CHARACTER_EXAMPLES, validate as validateCharacter } from "./character.js";
 import { requestJudgment } from "./judge.js";
+import {
+  fetchMatchState,
+  fetchProfile,
+  joinQueue,
+  leaveMatch,
+  submitOnlineAction,
+} from "./multiplayer.js";
+import * as render3d from "./render3d.js";
 import { loadData, saveCharacter, saveData, saveSettings } from "./storage.js";
 
 const ROUTES = new Set(["home", "create", "battle", "result"]);
@@ -25,6 +33,10 @@ let battle = null;
 let boss = null;
 let bossSkill = null;
 let fallbackNoticeShown = false;
+let onlineState = null;
+let onlinePoll = null;
+let onlineRevision = 0;
+let onlineRenderKey = "";
 
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (character) => ({
@@ -75,11 +87,12 @@ function renderHome() {
         ? `<div><strong>${escapeHtml(character.name)}</strong><p>${escapeHtml(character.trait)}</p></div><button class="button" data-action="edit">캐릭터 수정</button>`
         : `<p>아직 캐릭터가 없습니다. 한 줄로 당신을 만들어 보세요.</p>`}
     </article>
+    <div id="rank-profile" class="rank-profile"><span class="tier-badge">실버</span><strong>1000점</strong><small>랭크 기록을 불러오는 중…</small></div>
     <p class="progress">격파 ${saved.progress.beatenBossIds.length} / 5</p>
     <div class="home-actions">
-      <button class="button primary" data-action="challenge">도전 모드</button>
-      <button class="button" disabled>2인 대전</button>
-      <button class="button" disabled>오늘의 도전</button>
+      <button class="button primary ranked-button" data-action="ranked">랭크전</button>
+      <button class="button" data-action="casual">일반전</button>
+      <button class="button" data-action="challenge">보스 도전</button>
       <button class="button" data-action="settings">설정</button>
     </div>`;
 
@@ -88,7 +101,15 @@ function renderHome() {
     if (character) startBattle(character);
     else openCharacterForm();
   });
+  document.querySelector('[data-action="ranked"]').addEventListener("click", () => startOnlineMatch("ranked"));
+  document.querySelector('[data-action="casual"]').addEventListener("click", () => startOnlineMatch("casual"));
   document.querySelector('[data-action="settings"]').addEventListener("click", openSettings);
+  if (character) {
+    fetchProfile(character.name).then(({ profile }) => {
+      const target = document.querySelector("#rank-profile");
+      if (target) target.innerHTML = `<span class="tier-badge">${escapeHtml(profile.tier)}</span><strong>${profile.rating}점</strong><small>${profile.wins}승 ${profile.losses}패</small>`;
+    }).catch(() => {});
+  }
 }
 
 function openCharacterForm(character = null) {
@@ -203,7 +224,7 @@ function renderBattle() {
       <div class="fighter-state">${statusChips(p2)}<span class="wounds">${woundSlots(p2)}</span></div>
     </div>
     <div class="field-chip">${battle.field ? `${escapeHtml(battle.field.emoji)} ${escapeHtml(battle.field.name)}` : ""}</div>
-    <div id="stage" class="stage" aria-hidden="true"><i></i><i></i></div>
+    <div id="stage" class="stage" aria-hidden="true"></div>
     ${isLastStand ? `<div class="last-stand">💥 마지막 발악! 글자 제한도, 기력도 없다. 모든 것을 쏟아부어라!</div>` : ""}
     <div id="battle-log" class="battle-log" aria-live="polite">
       ${battle.log.map((entry) => `<p class="log-${entry.type}">${escapeHtml(entry.text)}</p>`).join("")}
@@ -243,6 +264,10 @@ function renderBattle() {
     }
   });
   document.querySelector("#skill-form").addEventListener("submit", submitSkill);
+  render3d.init(document.querySelector("#stage"));
+  render3d.setPhase("typing");
+  render3d.setWounds("p1", p1.wounds);
+  render3d.setWounds("p2", p2.wounds);
 }
 
 async function submitSkill(event) {
@@ -271,9 +296,162 @@ async function submitSkill(event) {
     showToast("판정 서버에 연결할 수 없어 약식 판정으로 진행합니다. 설정에서 서버 주소를 확인하세요.");
   }
   resolveTurn(battle, judgment);
+  await render3d.playTurn(judgment.motions, judgment.effects);
 
   if (battle.phase === "over") renderResult();
   else beginBattleTurn();
+}
+
+function clearOnlinePoll() {
+  if (onlinePoll) clearInterval(onlinePoll);
+  onlinePoll = null;
+}
+
+async function startOnlineMatch(mode) {
+  const character = loadData().character;
+  if (!character) {
+    openCharacterForm();
+    return;
+  }
+  clearOnlinePoll();
+  onlineState = null;
+  onlineRevision = 0;
+  onlineRenderKey = "";
+  navigate("battle");
+  renderMatchmaking(mode);
+  try {
+    const state = await joinQueue(mode, character);
+    await handleOnlineState(state);
+    onlinePoll = setInterval(async () => {
+      try { await handleOnlineState(await fetchMatchState()); } catch { /* 다음 폴링에서 다시 확인한다. */ }
+    }, 800);
+  } catch {
+    showToast("대전 서버에 연결할 수 없습니다. 판정 서버 주소를 확인하세요.");
+    renderHome();
+    navigate("home");
+  }
+}
+
+function renderMatchmaking(mode) {
+  document.querySelector("#battle-content").innerHTML = `
+    <div class="matchmaking">
+      <div class="search-ring"><span></span></div>
+      <p class="mode-label">${mode === "ranked" ? "랭크전" : "일반전"}</p>
+      <h2>상대를 찾고 있습니다</h2>
+      <p>비슷한 실력의 상대를 우선 검색합니다.<br>5초 동안 유저가 없으면 내 점수에 맞는 봇이 참가합니다.</p>
+      <button class="button" id="cancel-match">매칭 취소</button>
+    </div>`;
+  document.querySelector("#cancel-match").addEventListener("click", async () => {
+    clearOnlinePoll();
+    await leaveMatch().catch(() => {});
+    renderHome();
+    navigate("home");
+  });
+}
+
+async function handleOnlineState(state) {
+  if (state.status !== "matched") return;
+  onlineState = state;
+  const newTurn = state.revision > onlineRevision && state.lastTurn;
+  const renderKey = `${state.matchId}:${state.revision}:${state.submitted}:${state.battle.phase}:${state.battle.turn}`;
+  if (renderKey !== onlineRenderKey) {
+    onlineRenderKey = renderKey;
+    renderOnlineBattle(state);
+  }
+  if (newTurn) {
+    onlineRevision = state.revision;
+    await render3d.playTurn(state.lastTurn.judgment.motions, state.lastTurn.judgment.effects);
+  }
+  if (state.battle.phase === "over") renderOnlineResult(state);
+}
+
+function renderOnlineBattle(state) {
+  const side = state.side;
+  const opponentSide = side === "p1" ? "p2" : "p1";
+  const me = state.battle[side];
+  const opponent = state.battle[opponentSide];
+  const maxLength = me.lastStandActive ? 100 : me.statuses.includes("혼란") ? 30 : 60;
+  const modeName = state.mode === "ranked" ? "랭크전" : "일반전";
+  document.querySelector("#battle-content").innerHTML = `
+    <div class="online-mode"><span>${modeName}</span><span>${escapeHtml(state.opponent.tier)} · ${state.opponent.rating}점 ${state.opponent.bot ? "· BOT" : ""}</span></div>
+    <div class="fighter-bar opponent">
+      <div><strong>${escapeHtml(opponent.name)}</strong><small>${escapeHtml(state.opponent.character.trait)}</small></div>
+      <div class="fighter-state">${statusChips(opponent)}<span class="wounds">${woundSlots(opponent)}</span></div>
+    </div>
+    <div class="field-chip">${state.battle.field ? `${escapeHtml(state.battle.field.emoji)} ${escapeHtml(state.battle.field.name)}` : ""}</div>
+    <div id="stage" class="stage" aria-hidden="true"></div>
+    ${me.lastStandActive ? `<div class="last-stand">💥 마지막 발악! 글자 제한도, 기력도 없다. 모든 것을 쏟아부어라!</div>` : ""}
+    <div id="battle-log" class="battle-log" aria-live="polite">
+      ${state.battle.log.map((entry) => `<p class="log-${entry.type}">${escapeHtml(entry.text)}</p>`).join("")}
+    </div>
+    <div class="player-panel">
+      <div class="fighter-bar">
+        <div><strong>${escapeHtml(me.name)}</strong><div class="energy"><span style="width:${me.energy}%"></span></div></div>
+        <div class="fighter-state">${statusChips(me)}<span class="wounds">${woundSlots(me)}</span></div>
+      </div>
+      ${state.submitted ? `<p class="waiting-opponent">상대의 기술을 기다리는 중…</p>` : `
+      <form id="online-skill-form" class="skill-row">
+        <textarea id="online-skill-input" rows="2" maxlength="${maxLength}" placeholder="한 줄로 기술을 쓰세요"></textarea>
+        <button class="button primary" id="online-skill-submit" type="submit" disabled>기술 발동</button>
+      </form>
+      <div class="skill-meta"><span id="online-skill-count">0자 / 기력 ${me.energy}</span><span id="online-skill-error" class="error"></span></div>`}
+    </div>`;
+
+  render3d.init(document.querySelector("#stage"));
+  render3d.setPhase(state.submitted ? "resolving" : "typing");
+  render3d.setWounds("p1", state.battle.p1.wounds);
+  render3d.setWounds("p2", state.battle.p2.wounds);
+  const log = document.querySelector("#battle-log");
+  log.scrollTop = log.scrollHeight;
+  if (state.submitted) return;
+  const input = document.querySelector("#online-skill-input");
+  const submit = document.querySelector("#online-skill-submit");
+  const count = document.querySelector("#online-skill-count");
+  const error = document.querySelector("#online-skill-error");
+  input.addEventListener("input", () => {
+    const characters = countText(input.value);
+    const cost = inputCost(me, input.value);
+    const tooExpensive = !me.lastStandActive && cost > me.energy;
+    count.textContent = `${characters}자 / 기력 ${me.energy}`;
+    error.textContent = tooExpensive ? "기력이 부족합니다. 더 짧게 쓰세요." : "";
+    submit.disabled = !input.value.trim() || characters > maxLength || tooExpensive;
+  });
+  document.querySelector("#online-skill-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    input.disabled = true;
+    try { await handleOnlineState(await submitOnlineAction(input.value.trim())); }
+    catch (requestError) { showToast(requestError.message); input.disabled = false; }
+  });
+}
+
+function renderOnlineResult(state) {
+  clearOnlinePoll();
+  const won = state.battle.winner === state.side;
+  const draw = state.battle.winner === "draw";
+  const delta = state.ratingChange;
+  navigate("result");
+  render3d.finish(state.battle.winner);
+  document.querySelector("#result-content").innerHTML = `
+    <div class="result-card online-result">
+      <p class="result-kicker">${state.mode === "ranked" ? "랭크전" : "일반전"}</p>
+      <h2>${draw ? "무승부" : won ? "승리!" : "패배…"}</h2>
+      <p>${escapeHtml(state.opponent.character.name)}과의 대전</p>
+      ${state.mode === "ranked" ? `<div class="rating-change ${delta >= 0 ? "up" : "down"}">${delta >= 0 ? "+" : ""}${delta}점</div>` : `<div class="rating-change casual">점수 변동 없음</div>`}
+      <div class="result-actions">
+        <button class="button primary" data-action="same-mode">다시 매칭</button>
+        <button class="button" data-action="online-home">홈으로</button>
+      </div>
+    </div>`;
+  document.querySelector('[data-action="same-mode"]').addEventListener("click", async () => {
+    await leaveMatch().catch(() => {});
+    startOnlineMatch(state.mode);
+  });
+  document.querySelector('[data-action="online-home"]').addEventListener("click", async () => {
+    await leaveMatch().catch(() => {});
+    renderHome();
+    navigate("home");
+  });
 }
 
 function renderResult() {

@@ -74,6 +74,11 @@ button { cursor: pointer; }
 .progress { margin: 16px 2px; color: var(--sub); font-size: 0.88rem; }
 .home-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .home-actions .primary { grid-column: 1 / -1; min-height: 60px; }
+.home-actions .ranked-button { background: linear-gradient(135deg, #f0c84b, #b98214); box-shadow: 0 10px 30px rgba(201,162,39,0.18); }
+.rank-profile { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 2px 10px; margin-top: 12px; padding: 13px 16px; border: 1px solid rgba(201,162,39,0.32); border-radius: 14px; background: rgba(201,162,39,0.07); }
+.rank-profile .tier-badge { grid-row: 1 / 3; padding: 7px 10px; border-radius: 9px; color: #17120a; background: var(--gold); font-size: 0.75rem; font-weight: 900; }
+.rank-profile strong { font-size: 1.05rem; }
+.rank-profile small { color: var(--sub); }
 
 .form-stack { display: grid; gap: 18px; }
 .form-stack label { display: grid; gap: 8px; color: var(--sub); font-size: 0.88rem; font-weight: 700; }
@@ -112,6 +117,7 @@ input:focus, textarea:focus { border-color: var(--p1); box-shadow: 0 0 0 3px rgb
 .status { padding: 3px 7px; border: 1px solid var(--gold); border-radius: 999px; color: var(--gold); font-size: 0.7rem; }
 .field-chip { align-self: center; min-height: 32px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--sub); font-size: 0.78rem; background: var(--panel); }
 .stage { position: relative; height: 22vh; min-height: 150px; margin: 10px 0; overflow: hidden; border-radius: var(--radius); background: radial-gradient(ellipse at 50% 78%, #2c2c38 0 30%, transparent 31%), linear-gradient(#171721, #101014); }
+.stage canvas { display: block; width: 100%; height: 100%; }
 .stage::after { content: ""; position: absolute; left: 20%; right: 20%; bottom: 19%; height: 1px; background: var(--line); box-shadow: 0 0 24px var(--gold); }
 .stage i { position: absolute; bottom: 22%; width: 18px; height: 54px; border-radius: 50% 50% 35% 35%; background: var(--p1); box-shadow: 0 -23px 0 -2px var(--p1); transform: skew(-5deg); }
 .stage i:first-child { left: 27%; }
@@ -133,6 +139,16 @@ input:focus, textarea:focus { border-color: var(--p1); box-shadow: 0 0 0 3px rgb
 .skill-row textarea { min-height: 62px; }
 .skill-row .button { width: 92px; }
 .skill-meta { margin-top: 5px; }
+.online-mode { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; color: var(--gold); font-size: 0.75rem; font-weight: 800; }
+.online-mode span:last-child { color: var(--sub); font-weight: 600; }
+.waiting-opponent { margin: 12px 0 4px; padding: 14px; border: 1px dashed var(--line); border-radius: 13px; color: var(--sub); text-align: center; animation: pulse 1.1s ease-in-out infinite alternate; }
+.matchmaking { display: grid; min-height: calc(100vh - 48px); place-content: center; justify-items: center; padding: 20px; text-align: center; }
+.matchmaking h2 { margin: 8px 0; font-size: 1.65rem; }
+.matchmaking > p:not(.mode-label) { margin: 0 0 28px; color: var(--sub); line-height: 1.65; }
+.mode-label { margin: 20px 0 0; color: var(--gold); font-weight: 900; letter-spacing: 0.12em; }
+.search-ring { width: 92px; height: 92px; padding: 8px; border: 2px solid var(--line); border-top-color: var(--gold); border-radius: 50%; animation: spin 1.25s linear infinite; }
+.search-ring span { display: block; width: 100%; height: 100%; border: 1px solid rgba(201,162,39,0.32); border-radius: 50%; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
 .result-card { padding-top: 14vh; text-align: center; }
 .result-kicker { color: var(--gold); font-size: 0.75rem; font-weight: 800; letter-spacing: 0.18em; }
@@ -143,6 +159,10 @@ input:focus, textarea:focus { border-color: var(--p1); box-shadow: 0 0 0 3px rgb
 .highlight small { color: var(--gold); }
 .highlight p { margin-bottom: 0; line-height: 1.55; }
 .result-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rating-change { width: fit-content; margin: 26px auto; padding: 12px 22px; border-radius: 999px; font-size: 1.4rem; font-weight: 900; }
+.rating-change.up { color: #74e6a2; background: rgba(60,200,120,0.12); }
+.rating-change.down { color: #ff7b8f; background: rgba(255,60,90,0.12); }
+.rating-change.casual { color: var(--sub); background: var(--panel); font-size: 0.95rem; }
 
 .modal {
   position: fixed;

@@ -47,8 +47,12 @@ export function fallbackJudgment(payload) {
 function loadSettings() {
   try {
     const saved = JSON.parse(localStorage.getItem("old:v1") || "{}");
+    const savedUrl = saved.settings?.judgeUrl || DEFAULT_JUDGE_URL;
+    const judgeUrl = /^http:\/\/(localhost|127\.0\.0\.1):8787$/i.test(savedUrl) &&
+      typeof location !== "undefined" && !["localhost", "127.0.0.1"].includes(location.hostname)
+      ? `http://${location.hostname}:8787` : savedUrl;
     return {
-      judgeUrl: saved.settings?.judgeUrl || DEFAULT_JUDGE_URL,
+      judgeUrl,
       offline: Boolean(saved.settings?.offline),
     };
   } catch {
