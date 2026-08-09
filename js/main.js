@@ -304,6 +304,7 @@ function renderBattle() {
   });
   document.querySelector("#skill-form").addEventListener("submit", submitSkill);
   render3d.init(document.querySelector("#stage"));
+  render3d.setField(battle.field);
   render3d.setPhase("typing");
   render3d.setWounds("p1", p1.wounds);
   render3d.setWounds("p2", p2.wounds);
@@ -437,6 +438,7 @@ function renderOnlineBattle(state) {
     </div>`;
 
   render3d.init(document.querySelector("#stage"));
+  render3d.setField(state.battle.field);
   render3d.setPhase(state.submitted ? "resolving" : "typing");
   render3d.setWounds("p1", state.battle.p1.wounds);
   render3d.setWounds("p2", state.battle.p2.wounds);
