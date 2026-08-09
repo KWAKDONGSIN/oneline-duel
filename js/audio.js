@@ -80,7 +80,7 @@ function envelope(gain, peak, attack, decay, start = ctx.currentTime) {
 }
 
 // 잡음 한 번 터뜨리기 (타격·바람·폭발의 기본)
-function burst({ type = "bandpass", freq = 1200, q = 1, peak = 0.5, attack = 0.005, decay = 0.2, sweepTo = null }) {
+function burst({ type = "bandpass", freq = 1200, q = 1, peak = 0.5, attack = 0.005, decay = 0.2, sweepTo = null, delay = 0 }) {
   const src = noiseSource();
   const filter = ctx.createBiquadFilter();
   filter.type = type;
@@ -88,11 +88,11 @@ function burst({ type = "bandpass", freq = 1200, q = 1, peak = 0.5, attack = 0.0
   filter.Q.value = q;
   const gain = ctx.createGain();
   src.connect(filter).connect(gain).connect(sfxBus);
-  const now = ctx.currentTime;
-  if (sweepTo) filter.frequency.exponentialRampToValueAtTime(sweepTo, now + attack + decay);
-  envelope(gain, peak, attack, decay, now);
-  src.start(now);
-  src.stop(now + attack + decay + 0.05);
+  const start = ctx.currentTime + delay;
+  if (sweepTo) filter.frequency.exponentialRampToValueAtTime(sweepTo, start + attack + decay);
+  envelope(gain, peak, attack, decay, start);
+  src.start(start);
+  src.stop(start + attack + decay + 0.05);
 }
 
 // 음정이 있는 소리 (마법·회복·발사)
@@ -156,6 +156,20 @@ const SFX = {
   stealth:    () => { tone({ wave: "sine", from: 700, to: 180, peak: 0.14, attack: 0.05, decay: 0.5 }); },
   taunt:      () => { tone({ wave: "square", from: 500, to: 700, peak: 0.14, decay: 0.12 });
                       tone({ wave: "square", from: 700, to: 500, peak: 0.14, decay: 0.12, delay: 0.14 }); },
+  // 히든 기믹 — 무지개 반사.
+  // 기를 모으는 상승음 → 일곱 빛깔이 하나씩 열리는 프리즘 아르페지오 → 되돌려 보내는 굉음.
+  rainbow:    () => {
+    tone({ wave: "triangle", from: 120, to: 1400, peak: 0.24, attack: 0.55, decay: 0.15 });
+    burst({ type: "highpass", freq: 1800, peak: 0.16, attack: 0.5, decay: 0.2 });
+    // 도-레-미-솔-라-도-미. 7음이 시차를 두고 겹쳐 무지개처럼 번진다.
+    [523, 587, 659, 784, 880, 1047, 1319].forEach((f, i) => {
+      tone({ wave: "sine", from: f, peak: 0.2, attack: 0.01, decay: 0.9, delay: 0.6 + i * 0.055 });
+      tone({ wave: "triangle", from: f * 2, peak: 0.07, attack: 0.01, decay: 0.5, delay: 0.6 + i * 0.055 });
+    });
+    tone({ wave: "sawtooth", from: 1600, to: 240, peak: 0.22, attack: 0.02, decay: 0.7, delay: 1.05 });
+    tone({ wave: "sine", from: 130, to: 34, peak: 0.5, attack: 0.006, decay: 1.2, delay: 1.15 });
+    burst({ type: "lowpass", freq: 2200, peak: 0.45, decay: 0.9, sweepTo: 220, delay: 1.15 });
+  },
   // 화면 조작음
   click:      () => { tone({ wave: "triangle", from: 900, to: 600, peak: 0.1, decay: 0.06 }); },
   win:        () => { [523, 659, 784, 1047].forEach((f, i) =>

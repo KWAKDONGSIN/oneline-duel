@@ -85,6 +85,37 @@ export function beginTurn(battle) {
   return { field, tease: null };
 }
 
+// ── 히든 기믹: 무지개 반사 ─────────────────────────────────────
+// 게임 제목이 곧 필살기다. 어릴 적 말싸움에서 무엇이 날아오든 되돌려 보내던 그 말을
+// 그대로 규칙으로 옮겼다. 이 문장만은 심판을 거치지 않고 즉시 승부를 끝낸다.
+// 안내는 어디에도 없다. 제목을 보고 떠올린 사람만 쓸 수 있는 비밀이다.
+const RAINBOW_PHRASE = "무지개반사";
+
+export function isRainbowReflect(text) {
+  return typeof text === "string" && text.replace(/\s+/g, "") === RAINBOW_PHRASE;
+}
+
+// 판정도, 기력 소모도, 마지막 발악도 없다. 무지개 반사 앞에서는 전부 되돌아간다.
+export function resolveRainbow(battle, side) {
+  const opponentSide = side === "p1" ? "p2" : "p1";
+  const opponent = battle[opponentSide];
+
+  opponent.wounds = opponent.endurance;
+  opponent.lastStandActive = false;
+  opponent.lastStandUsed = true;
+  battle.winner = side;
+  battle.phase = "over";
+
+  battle.log.push({ type: "skill", who: side, text: `${battle[side].name}: 무지개 반사` });
+  battle.log.push({
+    type: "narration",
+    who: null,
+    text: `🌈 일곱 빛깔이 펼쳐진다. ${opponent.name}이(가) 내민 모든 것이 그대로 되돌아갔다.`,
+  });
+
+  return { events: [{ type: "rainbow", side }], result: null };
+}
+
 export function countText(text) {
   return text.replace(/\s+/g, "").length;
 }

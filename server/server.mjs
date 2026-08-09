@@ -2,7 +2,7 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { beginTurn, buildJudgePayload, createBattle, resolveTurn, validateInput } from "../js/battle.js";
+import { beginTurn, buildJudgePayload, createBattle, isRainbowReflect, resolveRainbow, resolveTurn, validateInput } from "../js/battle.js";
 
 const SERVER_DIR = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.dirname(SERVER_DIR);
@@ -420,6 +420,18 @@ const server = http.createServer(async (request, response) => {
       if (!match || match.battle.phase === "over") return sendJson(response, 409, { error: "진행 중인 대전이 없습니다." });
       const side = match.players.p1.id === body.playerId ? "p1" : "p2";
       if (match.submitted[side]) return sendJson(response, 409, { error: "이미 기술을 제출했습니다." });
+
+      // 무지개 반사는 상대의 제출을 기다리지 않는다. 쓴 쪽이 그 자리에서 이긴다.
+      if (isRainbowReflect(String(body.text || ""))) {
+        resolveRainbow(match.battle, side);
+        match.revision += 1;
+        match.updatedAt = Date.now();
+        match.lastTurn = { revision: match.revision, rainbow: side, judgment: null, texts: { [side]: "무지개 반사" } };
+        match.submitted = {};
+        updateRating(match);
+        return sendJson(response, 200, matchView(match, body.playerId));
+      }
+
       const validation = validateInput(match.battle, side, String(body.text || ""));
       if (!validation.ok) return sendJson(response, 400, { error: validation.reason });
       match.submitted[side] = String(body.text).trim();

@@ -552,6 +552,92 @@ export async function playTurn(motions = [], effects = [], onDone = () => {}) {
   onDone();
 }
 
+// ── 무지개 반사 ───────────────────────────────────────────────
+// 기를 모으고 → 일곱 빛깔 거울을 펼치고 → 그 빛을 상대에게 통째로 되돌려 보낸다.
+const RAINBOW = [0xff2d2d, 0xff9130, 0xffe93b, 0x3fd45f, 0x35a7ff, 0x3f4bd4, 0x9b3fd4];
+
+export async function rainbowReflect(side) {
+  if (!scene || !actors?.[side]) return;
+  const actor = actors[side];
+  const target = actors[side === "p1" ? "p2" : "p1"];
+  const direction = side === "p1" ? 1 : -1;
+  const origin = actor.root.position.clone().add(new THREE.Vector3(0, 1.25, 0));
+  const hit = target.root.position.clone().add(new THREE.Vector3(0, 1.2, 0));
+  const cameraStart = camera.position.clone();
+  phase = "resolving";
+  resetPose(actor);
+
+  // 1. 두 팔을 들어 올리며 흰 빛의 핵을 모은다
+  const core = new THREE.Mesh(
+    new THREE.SphereGeometry(0.2, 16, 12),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95 }),
+  );
+  core.position.copy(origin).add(new THREE.Vector3(direction * 0.45, 0, 0));
+  core.scale.setScalar(0.01);
+  scene.add(core);
+  await tween(620, (eased, linear) => {
+    actor.armL.rotation.z = -2.5 * eased;
+    actor.armR.rotation.z = 2.5 * eased;
+    actor.root.position.y = Math.sin(linear * Math.PI) * 0.12;
+    core.scale.setScalar(0.05 + eased * 1.05);
+    camera.position.lerpVectors(cameraStart, cameraStart.clone().setZ(5.4), eased);
+  });
+
+  // 2. 일곱 빛깔 거울이 펼쳐진다. 고리가 하나씩 시차를 두고 열린다.
+  const mirror = new THREE.Group();
+  mirror.position.copy(origin).add(new THREE.Vector3(direction * 0.6, 0, 0));
+  mirror.rotation.y = direction * Math.PI * 0.5;
+  scene.add(mirror);
+  const rings = RAINBOW.map((color, index) => {
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(0.34 + index * 0.15, 0.045, 8, 32),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, side: THREE.DoubleSide }),
+    );
+    mirror.add(ring);
+    return ring;
+  });
+  await tween(560, (eased, linear) => {
+    rings.forEach((ring, index) => {
+      const local = Math.max(0, Math.min(1, (linear - index * 0.07) / 0.35));
+      ring.material.opacity = local * 0.9;
+      ring.scale.setScalar(0.2 + local * 0.8);
+      ring.rotation.z = local * Math.PI * (index % 2 ? -1 : 1);
+    });
+    core.scale.setScalar(1.1 + Math.sin(linear * Math.PI * 4) * 0.25);
+    shakePower = 0.02 * eased;
+  });
+
+  // 3. 빛줄기 일곱 갈래가 상대에게 쏟아진다
+  await Promise.all(RAINBOW.map((color, index) =>
+    new Promise((resolve) => setTimeout(() => {
+      const from = origin.clone().add(new THREE.Vector3(direction * 0.6, (index - 3) * 0.13, 0));
+      makeBeam(from, hit, color).then(resolve);
+    }, index * 55)),
+  ));
+
+  // 4. 상대가 통째로 튕겨 나간다
+  shakePower = 0.16;
+  RAINBOW.forEach((color, index) => setTimeout(() => burst(hit, color, 26), index * 40));
+  const knockFrom = target.root.position.clone();
+  const knockTo = knockFrom.clone().add(new THREE.Vector3(direction * 1.5, 0, 0));
+  await tween(700, (eased, linear) => {
+    target.root.position.lerpVectors(knockFrom, knockTo, eased);
+    target.root.position.y = Math.sin(linear * Math.PI) * 0.9;
+    target.root.rotation.z = direction * eased * 2.2;
+    rings.forEach((ring) => { ring.material.opacity = 0.9 * (1 - eased); ring.scale.multiplyScalar(1.02); });
+    core.material.opacity = 1 - eased;
+  });
+
+  rings.forEach((ring) => { ring.geometry.dispose(); ring.material.dispose(); });
+  scene.remove(mirror);
+  core.geometry.dispose();
+  core.material.dispose();
+  scene.remove(core);
+  await tween(360, (eased) => camera.position.lerpVectors(camera.position.clone(), cameraStart, eased));
+  camera.position.copy(cameraStart);
+  phase = "idle";
+}
+
 export function setWounds(side, wounds) {
   if (actors?.[side]) {
     actors[side].root.userData.wounds = wounds;

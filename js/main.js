@@ -4,6 +4,8 @@ import {
   countText,
   createBattle,
   inputCost,
+  isRainbowReflect,
+  resolveRainbow,
   resolveTurn,
   validateInput,
 } from "./battle.js";
@@ -397,6 +399,19 @@ async function submitSkill(event) {
   if (battle.phase !== "input") return;
   const input = document.querySelector("#skill-input");
   const playerText = input.value.trim();
+
+  // 무지개 반사는 기력도 판정도 거치지 않는다. 쓴 순간 그대로 끝난다.
+  if (isRainbowReflect(playerText)) {
+    battle.phase = "resolving";
+    input.disabled = true;
+    document.querySelector("#skill-submit").disabled = true;
+    resolveRainbow(battle, "p1");
+    playSfx("rainbow");
+    await render3d.rainbowReflect("p1");
+    renderResult();
+    return;
+  }
+
   const playerValidation = validateInput(battle, "p1", playerText);
   if (!playerValidation.ok) return;
   validateInput(battle, "p2", bossSkill.text);
@@ -494,7 +509,12 @@ async function handleOnlineState(state) {
   }
   if (newTurn) {
     onlineRevision = state.revision;
-    await render3d.playTurn(state.lastTurn.judgment.motions, state.lastTurn.judgment.effects);
+    if (state.lastTurn.rainbow) {
+      playSfx("rainbow");
+      await render3d.rainbowReflect(state.lastTurn.rainbow);
+    } else {
+      await render3d.playTurn(state.lastTurn.judgment.motions, state.lastTurn.judgment.effects);
+    }
   }
   if (state.battle.phase === "over") renderOnlineResult(state);
 }
@@ -547,10 +567,12 @@ function renderOnlineBattle(state) {
   input.addEventListener("input", () => {
     const characters = countText(input.value);
     const cost = inputCost(me, input.value);
-    const tooExpensive = !me.lastStandActive && cost > me.energy;
+    // 무지개 반사는 기력을 쓰지 않는다. 기력이 바닥나도 발동은 막지 않는다.
+    const trump = isRainbowReflect(input.value);
+    const tooExpensive = !trump && !me.lastStandActive && cost > me.energy;
     count.textContent = `${characters}자 / 기력 ${me.energy}`;
     error.textContent = tooExpensive ? "기력이 부족합니다. 더 짧게 쓰세요." : "";
-    submit.disabled = !input.value.trim() || characters > maxLength || tooExpensive;
+    submit.disabled = !input.value.trim() || (!trump && characters > maxLength) || tooExpensive;
   });
   document.querySelector("#online-skill-form").addEventListener("submit", async (event) => {
     event.preventDefault();
