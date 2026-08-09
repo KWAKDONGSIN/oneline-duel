@@ -109,6 +109,22 @@ function resetPose(actor) {
   actor.root.scale.setScalar(1);
 }
 
+// 베기·받아치기의 칼자국. 반원 띠를 대각선으로 눕혀 휘두른 궤적처럼 보이게 한다.
+function swingArc(at, direction, color) {
+  const arc = new THREE.Mesh(
+    new THREE.TorusGeometry(0.85, 0.055, 6, 20, Math.PI * 0.85),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, side: THREE.DoubleSide }),
+  );
+  arc.position.copy(at).add(new THREE.Vector3(-direction * 0.3, 0.15, 0));
+  arc.rotation.set(0, Math.PI / 2, direction * -0.9);
+  scene.add(arc);
+  tween(320, (eased) => {
+    arc.material.opacity = 0.9 * (1 - eased);
+    arc.scale.setScalar(1 + eased * 0.5);
+  });
+  return arc;
+}
+
 function makeBeam(from, to, color) {
   const length = from.distanceTo(to);
   const beam = new THREE.Mesh(
@@ -239,16 +255,119 @@ async function animateMotion({ actor: side, motion }) {
     await tween(180, (eased) => actor.root.scale.setScalar(1 - eased));
     actor.root.position.x = target.root.position.x - direction * 0.8;
     await tween(180, (eased) => actor.root.scale.setScalar(eased));
-  } else if (["slash", "stab", "counter", "punch_rush", "kick", "grab_throw"].includes(motion)) {
+  } else if (motion === "slash") {
+    // 베기: 팔을 머리 위로 들었다가 대각선으로 내리긋고, 궤적에 흰 호가 남는다.
     const startX = actor.root.position.x;
-    await tween(230, (eased) => {
-      actor.root.position.x = startX + direction * eased * 1.35;
-      actor.armR.rotation.z = -direction * eased * (motion === "stab" ? 1.55 : 2.45);
-      if (motion === "kick") actor.legR.rotation.z = -direction * eased * 1.6;
+    await tween(160, (eased) => {
+      actor.armR.rotation.z = -direction * (0.18 + eased * 2.9);   // 크게 치켜든다
+      actor.torso.rotation.z = direction * eased * 0.2;
     });
-    burst(destination, 0xffffff, motion === "punch_rush" ? 30 : 16);
-    camera.position.x += direction * 0.12;
-    await tween(260, (eased) => { actor.root.position.x = startX + direction * (1 - eased) * 1.35; });
+    const arc = swingArc(destination, direction, 0xffffff);
+    await tween(190, (eased) => {
+      actor.root.position.x = startX + direction * eased * 1.2;
+      actor.armR.rotation.z = -direction * (3.08 - eased * 4.2);   // 단숨에 내려친다
+      actor.torso.rotation.z = direction * (0.2 - eased * 0.45);
+    });
+    burst(destination, 0xffffff, 20);
+    scene.remove(arc);
+    await tween(240, (eased) => { actor.root.position.x = startX + direction * (1 - eased) * 1.2; });
+
+  } else if (motion === "stab") {
+    // 찌르기: 몸을 낮추고 일직선으로 파고든다. 팔은 앞으로 곧게 뻗는다.
+    const startX = actor.root.position.x;
+    await tween(120, (eased) => {
+      actor.torso.rotation.x = -eased * 0.32;                       // 자세를 낮춘다
+      actor.armR.rotation.z = -direction * (0.18 + eased * 0.5);
+    });
+    await tween(140, (eased) => {
+      actor.root.position.x = startX + direction * eased * 1.7;     // 더 깊고 빠르게
+      actor.armR.rotation.z = -direction * (0.68 + eased * 0.92);
+    });
+    burst(destination, 0xdff2ff, 12);
+    await tween(260, (eased) => {
+      actor.root.position.x = startX + direction * (1 - eased) * 1.7;
+      actor.torso.rotation.x = -(1 - eased) * 0.32;
+    });
+
+  } else if (motion === "punch_rush") {
+    // 연타: 이동하지 않고 제자리에서 양팔을 교대로 빠르게 6번 뻗는다.
+    const startX = actor.root.position.x;
+    await tween(120, (eased) => { actor.root.position.x = startX + direction * eased * 0.7; });
+    for (let i = 0; i < 6; i += 1) {
+      const right = i % 2 === 0;
+      await tween(85, (eased) => {
+        const swing = Math.sin(eased * Math.PI) * 1.7;
+        if (right) actor.armR.rotation.z = -direction * (0.18 + swing);
+        else actor.armL.rotation.z = direction * (0.18 + swing);
+      });
+      burst(destination, 0xffffff, 7);
+    }
+    await tween(200, (eased) => { actor.root.position.x = startX + direction * (1 - eased) * 0.7; });
+
+  } else if (motion === "kick") {
+    // 발차기: 한 발로 서서 다리를 크게 차올린다. 팔은 균형을 잡는다.
+    const startX = actor.root.position.x;
+    await tween(150, (eased) => {
+      actor.root.position.x = startX + direction * eased * 0.9;
+      actor.torso.rotation.z = -direction * eased * 0.3;            // 상체를 젖혀 균형
+      actor.armL.rotation.z = direction * eased * 1.5;
+      actor.legR.rotation.z = -direction * eased * 2.3;             // 높이 차올린다
+    });
+    burst(destination, 0xfff0d0, 18);
+    await tween(280, (eased) => {
+      actor.root.position.x = startX + direction * (1 - eased) * 0.9;
+      actor.legR.rotation.z = -direction * (1 - eased) * 2.3;
+      actor.torso.rotation.z = -direction * (1 - eased) * 0.3;
+    });
+
+  } else if (motion === "counter") {
+    // 받아치기: 막는 자세로 버틴 뒤 방패가 깨지며 그대로 반격으로 이어진다.
+    actor.armL.rotation.z = direction * 1.25;
+    actor.armR.rotation.z = -direction * 1.25;
+    const guard = new THREE.Mesh(
+      new THREE.CircleGeometry(0.62, 24),
+      new THREE.MeshBasicMaterial({ color: 0x9ad0ff, transparent: true, opacity: 0.55, side: THREE.DoubleSide }),
+    );
+    guard.position.copy(actor.root.position).add(new THREE.Vector3(direction * 0.55, 1.5, 0));
+    guard.rotation.y = Math.PI / 2;
+    scene.add(guard);
+    await tween(220, (eased) => { guard.material.opacity = 0.55 - eased * 0.15; });
+    burst(guard.position.clone(), 0x9ad0ff, 24);                    // 막아낸다
+    await tween(140, (eased) => { guard.scale.setScalar(1 + eased * 1.6); guard.material.opacity = 0.4 * (1 - eased); });
+    scene.remove(guard);
+    const startX = actor.root.position.x;
+    const arc = swingArc(destination, direction, 0xffe680);
+    await tween(180, (eased) => {                                   // 곧바로 되받아친다
+      actor.root.position.x = startX + direction * eased * 1.3;
+      actor.armR.rotation.z = -direction * (1.25 + eased * 1.6);
+    });
+    burst(destination, 0xffe680, 26);
+    scene.remove(arc);
+    await tween(240, (eased) => { actor.root.position.x = startX + direction * (1 - eased) * 1.3; });
+
+  } else if (motion === "grab_throw") {
+    // 잡아 던지기: 파고들어 붙잡은 뒤, 상대를 머리 위로 넘겨 반대편에 내리꽂는다.
+    const startX = actor.root.position.x;
+    const targetStartX = target.root.position.x;
+    await tween(200, (eased) => {
+      actor.root.position.x = startX + direction * eased * 1.9;
+      actor.armL.rotation.z = direction * eased * 1.7;
+      actor.armR.rotation.z = -direction * eased * 1.7;
+    });
+    await tween(420, (eased) => {                                   // 포물선을 그리며 넘긴다
+      target.root.position.x = targetStartX - direction * eased * 2.6;
+      target.root.position.y = Math.sin(eased * Math.PI) * 1.5;
+      target.root.rotation.z = direction * eased * Math.PI;
+    });
+    target.root.position.y = 0;
+    target.root.rotation.z = 0;
+    burst(target.root.position.clone().add(new THREE.Vector3(0, 0.4, 0)), 0xffffff, 30);
+    shakePower = 0.08;
+    await tween(300, (eased) => {
+      actor.root.position.x = startX + direction * (1 - eased) * 1.9;
+      target.root.position.x = (targetStartX - direction * 2.6) + direction * eased * 2.6;
+    });
+
   } else if (motion === "dodge") {
     const startX = actor.root.position.x;
     await tween(220, (eased) => {

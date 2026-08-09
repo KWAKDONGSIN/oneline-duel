@@ -770,8 +770,18 @@ function startAudioOnce() {
   window.addEventListener(type, startAudioOnce, { once: true, passive: true }));
 
 window.addEventListener("hashchange", () => {
+  const route = routeFromHash();
   renderRoute();
-  if (routeFromHash() === "home" && audioStarted) playTitleMusic();   // 홈으로 돌아오면 메인 테마
+  if (!audioStarted) return;
+  // 화면을 옮기면 그 화면에 맞는 음악으로 정리한다. 감상용으로 튼 곡이 계속 따라다니지 않게 한다.
+  if (route === "home") playTitleMusic();
+  else if (route !== "battle") stopMusic();
+});
+
+// 탭을 벗어나면 음악을 멈춘다. 다른 일을 하는 동안 계속 흘러나오지 않게.
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) stopMusic();
+  else if (audioStarted && routeFromHash() === "home") playTitleMusic();
 });
 applyTheme(currentTheme());   // 저장된 테마를 첫 화면부터 적용한다
 renderRoute();
