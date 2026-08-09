@@ -10,6 +10,7 @@ let clock;
 let running = false;
 let orbitAngle = 0;
 let shakePower = 0;
+let resizeObserver;
 
 const COLORS = { p1: 0x3ca8ff, p2: 0xff5a3c };
 const EFFECT_COLORS = {
@@ -117,13 +118,25 @@ function summonDragon(from, to, direction) {
   });
 }
 
+// 애니메이션 한 구간. requestAnimationFrame은 탭이 백그라운드로 가면 멈추므로,
+// 타이머로 안전장치를 걸어 두지 않으면 그 사이에 시작한 턴이 영영 끝나지 않는다.
 function tween(duration, update) {
   return new Promise((resolve) => {
     const started = performance.now();
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(guard);
+      update(1, 1);   // 중간에 멈췄더라도 최종 상태로 맞춰 놓는다
+      resolve();
+    };
+    const guard = setTimeout(finish, duration + 1_000);
     function frame(now) {
+      if (done) return;
       const t = Math.min(1, (now - started) / duration);
       update(1 - (1 - t) ** 3, t);
-      if (t < 1) requestAnimationFrame(frame); else resolve();
+      if (t < 1) requestAnimationFrame(frame); else finish();
     }
     requestAnimationFrame(frame);
   });
@@ -252,9 +265,34 @@ function renderLoop() {
   renderer.render(scene, camera);
 }
 
+// 컨테이너 크기에 맞춰 캔버스를 다시 맞춘다. container 전역을 보므로 무대를 옮겨도 안전하다.
+function resizeToContainer() {
+  if (!renderer || !container) return;
+  const width = container.clientWidth || 400;
+  const height = container.clientHeight || 220;
+  renderer.setSize(width, height, false);
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+}
+
+// 무대 div가 새로 그려져도 캔버스만 옮겨 붙인다. 씬을 다시 만들면 WebGL 컨텍스트가 누수된다.
+function attachTo(target) {
+  container = target;
+  target.innerHTML = "";
+  target.append(renderer.domElement);
+  resizeObserver?.disconnect();
+  resizeObserver = new ResizeObserver(resizeToContainer);
+  resizeObserver.observe(target);
+  resizeToContainer();
+}
+
 export function init(target) {
-  if (container === target && renderer) return;
-  if (renderer) renderer.dispose();
+  if (!target) return;
+  if (renderer) {
+    if (container !== target) attachTo(target);
+    else resizeToContainer();
+    return;
+  }
   container = target;
   target.innerHTML = "";
   scene = new THREE.Scene();
@@ -273,15 +311,9 @@ export function init(target) {
   light.position.set(3, 6, 4);
   scene.add(light);
   actors = { p1: makeActor("p1"), p2: makeActor("p2") };
-  const resize = () => {
-    const width = target.clientWidth || 400;
-    const height = target.clientHeight || 220;
-    renderer.setSize(width, height, false);
-    camera.aspect = width / height;
-    camera.updateProjectionMatrix();
-  };
-  new ResizeObserver(resize).observe(target);
-  resize();
+  resizeObserver = new ResizeObserver(resizeToContainer);
+  resizeObserver.observe(target);
+  resizeToContainer();
   clock = new THREE.Clock();
   if (!running) { running = true; renderLoop(); }
 }

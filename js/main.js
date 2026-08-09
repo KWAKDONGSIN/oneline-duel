@@ -19,8 +19,19 @@ import {
 } from "./multiplayer.js";
 import * as render3d from "./render3d.js";
 import { loadData, saveCharacter, saveData, saveSettings } from "./storage.js";
+import { initSession, isLoggedIn, signIn, signOut } from "./auth.js";
+import { AUTH_ENABLED, PROVIDERS } from "./supabase-config.js";
+import {
+  fetchLeaderboard,
+  getProfile,
+  loadOrCreateProfile,
+  reportBossClear,
+  setNickname,
+  syncCharacter,
+  tierFor,
+} from "./account.js";
 
-const ROUTES = new Set(["home", "create", "battle", "result"]);
+const ROUTES = new Set(["home", "create", "battle", "result", "ranking"]);
 const STATUS_LABELS = {
   화상: "다음 턴 기술이 약해진다",
   감전: "다음 턴 기력 소모 +30%",
@@ -31,6 +42,7 @@ const STATUS_LABELS = {
 let gameData = null;
 let battle = null;
 let boss = null;
+let bossIndex = 0;
 let bossSkill = null;
 let fallbackNoticeShown = false;
 let onlineState = null;
@@ -93,6 +105,7 @@ function renderHome() {
       <button class="button primary ranked-button" data-action="ranked">랭크전</button>
       <button class="button" data-action="casual">일반전</button>
       <button class="button" data-action="challenge">보스 도전</button>
+      <button class="button" data-action="ranking">랭킹</button>
       <button class="button" data-action="settings">설정</button>
     </div>`;
 
@@ -103,7 +116,9 @@ function renderHome() {
   });
   document.querySelector('[data-action="ranked"]').addEventListener("click", () => startOnlineMatch("ranked"));
   document.querySelector('[data-action="casual"]').addEventListener("click", () => startOnlineMatch("casual"));
+  document.querySelector('[data-action="ranking"]').addEventListener("click", renderRanking);
   document.querySelector('[data-action="settings"]').addEventListener("click", openSettings);
+  renderAccountBar();
   if (character) {
     fetchProfile(character.name).then(({ profile }) => {
       const target = document.querySelector("#rank-profile");
@@ -146,6 +161,7 @@ function openCharacterForm(character = null) {
     }
     const savedCharacter = { name: nameInput.value.trim(), trait: traitInput.value.trim() };
     saveCharacter(savedCharacter);
+    syncCharacter(savedCharacter);   // 로그인 상태면 계정에도 저장한다 (게스트면 아무 일도 하지 않는다)
     startBattle(savedCharacter);
   });
 }
@@ -195,13 +211,36 @@ function showTutorial() {
   });
 }
 
-function startBattle(character) {
-  boss = gameData.bosses[0];
+// 아직 격파하지 않은 첫 보스의 순번을 찾는다. 전부 격파했으면 마지막 보스를 다시 상대한다.
+function nextBossIndex() {
+  const beaten = new Set(loadData().progress.beatenBossIds);
+  const index = gameData.bosses.findIndex((candidate) => !beaten.has(candidate.id));
+  return index < 0 ? gameData.bosses.length - 1 : index;
+}
+
+function startBattle(character, index = nextBossIndex()) {
+  bossIndex = Math.max(0, Math.min(gameData.bosses.length - 1, index));
+  boss = gameData.bosses[bossIndex];
   battle = createBattle("boss", character, boss, undefined, gameData.fields);
   fallbackNoticeShown = false;
   navigate("battle");
   beginBattleTurn();
   showTutorial();
+}
+
+// 보스를 처음 격파했을 때만 진행도에 기록한다.
+function recordBossVictory() {
+  const saved = loadData();
+  if (!saved.progress.beatenBossIds.includes(boss.id)) {
+    saved.progress.beatenBossIds.push(boss.id);
+    saveData(saved);
+  }
+  // 로그인 상태면 계정 점수에도 반영한다. 점수 계산은 서버가 하고, 실패해도 게임은 그대로 진행한다.
+  if (isLoggedIn()) {
+    reportBossClear(boss.id, battle.p1.wounds)
+      .then(() => renderAccountBar())
+      .catch(() => {});
+  }
 }
 
 function beginBattleTurn() {
@@ -458,6 +497,9 @@ function renderResult() {
   navigate("result");
   const won = battle.winner === "p1";
   const draw = battle.winner === "draw";
+  if (won) recordBossVictory();
+  const hasNext = won && bossIndex + 1 < gameData.bosses.length;
+  const nextBoss = hasNext ? gameData.bosses[bossIndex + 1] : null;
   const title = draw ? "무승부" : won ? "승리!" : "패배…";
   const subtitle = draw ? "12턴의 사투 끝에 승부를 가리지 못했다"
     : won ? `${boss.title} ${boss.name} 격파` : `${boss.name}의 승리`;
@@ -470,13 +512,17 @@ function renderResult() {
       <p class="record-line">${battle.turn}턴 · 부상 ${"🩸".repeat(battle.p1.wounds)} · 발악 ${battle.p1.lastStandUsed ? "사용" : "미사용"}</p>
       <div class="highlight"><small>이 판의 명장면</small><p>${escapeHtml(lastNarration)}</p></div>
       <div class="result-actions">
-        ${won ? `<button class="button" disabled>다음 보스</button>` : ""}
-        <button class="button primary" data-action="retry">다시 도전</button>
+        ${hasNext ? `<button class="button primary" data-action="next-boss">다음 보스 — ${escapeHtml(nextBoss.emoji)} ${escapeHtml(nextBoss.name)}</button>` : ""}
+        ${won && !hasNext ? `<p class="all-clear">모든 보스를 격파했습니다!</p>` : ""}
+        <button class="button ${hasNext ? "" : "primary"}" data-action="retry">다시 도전</button>
         <button class="button" data-action="home">홈으로</button>
         <button class="button" data-action="copy">로그 복사</button>
       </div>
     </div>`;
-  document.querySelector('[data-action="retry"]').addEventListener("click", () => startBattle(loadData().character));
+  document.querySelector('[data-action="next-boss"]')?.addEventListener("click",
+    () => startBattle(loadData().character, bossIndex + 1));
+  document.querySelector('[data-action="retry"]').addEventListener("click",
+    () => startBattle(loadData().character, bossIndex));
   document.querySelector('[data-action="home"]').addEventListener("click", () => { renderHome(); navigate("home"); });
   document.querySelector('[data-action="copy"]').addEventListener("click", async () => {
     await navigator.clipboard.writeText(battle.log.map((entry) => entry.text).join("\n"));
@@ -500,6 +546,134 @@ async function loadGameData() {
   }
 }
 
+// ── 계정 (로그인·닉네임·랭킹) ───────────────────────────────────
+// 로그인은 어디까지나 선택이다. 아래 코드가 전부 실패해도 게스트 플레이는 그대로 동작해야 한다.
+
+function renderAccountBar() {
+  const bar = document.querySelector("#account-bar");
+  if (!bar) return;
+  if (!AUTH_ENABLED) { bar.innerHTML = ""; return; }
+
+  const profile = getProfile();
+  bar.innerHTML = isLoggedIn()
+    ? `<span class="account-name">${escapeHtml(profile?.nickname || "닉네임 미설정")}</span>
+       ${profile?.nickname ? "" : `<button class="link-button" data-action="set-nickname">닉네임 설정</button>`}
+       <button class="link-button" data-action="logout">로그아웃</button>`
+    : `<button class="link-button" data-action="login">로그인</button>`;
+
+  bar.querySelector('[data-action="login"]')?.addEventListener("click", openLoginModal);
+  bar.querySelector('[data-action="set-nickname"]')?.addEventListener("click", openNicknameModal);
+  bar.querySelector('[data-action="logout"]')?.addEventListener("click", async () => {
+    await signOut();
+    location.reload();
+  });
+}
+
+function openLoginModal() {
+  const modal = document.querySelector("#login-modal");
+  modal.hidden = false;
+  modal.innerHTML = `
+    <div class="modal-card">
+      <h3>로그인</h3>
+      <p class="modal-note">로그인하면 기록이 계정에 저장되고 랭킹에 참여할 수 있습니다.<br>로그인 없이도 게임은 그대로 즐길 수 있습니다.</p>
+      <div class="form-stack">
+        ${PROVIDERS.map((provider) => `
+          <button class="button provider ${provider.id}" data-provider="${provider.id}" ${provider.ready ? "" : "disabled"}>
+            ${escapeHtml(provider.label)}${provider.ready ? "" : " (준비 중)"}
+          </button>`).join("")}
+      </div>
+      <button class="button" data-action="close">닫기</button>
+    </div>`;
+  modal.querySelectorAll("[data-provider]").forEach((button) => {
+    button.addEventListener("click", () => signIn(button.dataset.provider));
+  });
+  modal.querySelector('[data-action="close"]').addEventListener("click", () => { modal.hidden = true; });
+}
+
+function openNicknameModal() {
+  const modal = document.querySelector("#nickname-modal");
+  modal.hidden = false;
+  modal.innerHTML = `
+    <div class="modal-card">
+      <h3>닉네임 설정</h3>
+      <p class="modal-note">랭킹에 표시될 이름입니다. 2~10자로 정해 주세요.</p>
+      <form id="nickname-form" class="form-stack" novalidate>
+        <input id="nickname-input" maxlength="10" placeholder="예: 바람의검객" value="${escapeHtml(getProfile()?.nickname ?? "")}">
+        <p class="error" id="nickname-error"></p>
+        <button class="button primary" type="submit">저장</button>
+      </form>
+    </div>`;
+  const form = modal.querySelector("#nickname-form");
+  const error = modal.querySelector("#nickname-error");
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    error.textContent = "";
+    const result = await setNickname(modal.querySelector("#nickname-input").value);
+    if (!result.ok) { error.textContent = result.reason; return; }
+    modal.hidden = true;
+    renderAccountBar();
+    renderHome();
+    showToast("닉네임이 저장되었습니다");
+  });
+}
+
+async function renderRanking() {
+  navigate("ranking");
+  const container = document.querySelector("#ranking-content");
+  container.innerHTML = `<p class="panel">랭킹을 불러오는 중…</p>`;
+
+  if (!AUTH_ENABLED) {
+    container.innerHTML = `<p class="panel">랭킹은 아직 준비 중입니다.</p>
+      <button class="button" data-action="ranking-home">홈으로</button>`;
+  } else {
+    try {
+      const rows = await fetchLeaderboard(100);
+      const myNickname = getProfile()?.nickname;
+      container.innerHTML = rows?.length
+        ? `<ol class="leaderboard">
+            ${rows.map((row) => `
+              <li class="${row.nickname === myNickname ? "me" : ""}">
+                <span class="rank-no">${row.rank}</span>
+                <span class="tier-badge">${escapeHtml(tierFor(row.rating))}</span>
+                <span class="rank-name">${escapeHtml(row.nickname)}</span>
+                <span class="rank-score">${row.rating}점</span>
+                <small>${row.wins}승 ${row.losses}패</small>
+              </li>`).join("")}
+          </ol>
+          <button class="button" data-action="ranking-home">홈으로</button>`
+        : `<p class="panel">아직 랭킹에 오른 사람이 없습니다. 첫 주인공이 되어 보세요.</p>
+           <button class="button" data-action="ranking-home">홈으로</button>`;
+    } catch {
+      container.innerHTML = `<p class="panel error">랭킹을 불러오지 못했습니다.</p>
+        <button class="button" data-action="ranking-home">홈으로</button>`;
+    }
+  }
+  container.querySelector('[data-action="ranking-home"]')?.addEventListener("click", () => {
+    renderHome();
+    navigate("home");
+  });
+}
+
+async function initAccount() {
+  if (!AUTH_ENABLED) { renderAccountBar(); return; }
+  try {
+    await initSession();
+    if (isLoggedIn()) {
+      const profile = await loadOrCreateProfile();
+      // 계정에 캐릭터가 있고 이 기기에 없으면 계정 쪽을 가져온다.
+      const saved = loadData();
+      if (profile?.character && !saved.character) {
+        saveCharacter(profile.character);
+      }
+      if (!profile?.nickname) openNicknameModal();
+    }
+  } catch {
+    // 로그인 실패가 게임을 막지 않는다.
+  }
+  renderAccountBar();
+  if (gameData) renderHome();
+}
+
 window.addEventListener("hashchange", () => renderRoute());
 renderRoute();
-loadGameData();
+loadGameData().then(initAccount);

@@ -15,7 +15,11 @@ const { bosses } = JSON.parse(fs.readFileSync(new URL("../data/bosses.json", imp
 const { fields } = JSON.parse(fs.readFileSync(new URL("../data/fields.json", import.meta.url), "utf8"));
 
 assert.equal(validate("민수", "몸이 바람처럼 빠르다").ok, true);
-assert.equal(validate("민수", "모든 공격을 막는다").word, "모든");
+assert.equal(validate("민수", "모든 공격을 막는다").word, "모든 공격");
+// "모든"이 들어갔다는 이유만으로 정상적인 설정을 막아서는 안 된다.
+assert.equal(validate("민수", "모든 것을 걸고 싸우는 검객이다").ok, true);
+// 이름에 들어간 금지어도 걸러야 한다.
+assert.equal(validate("무적왕", "평범한 검객이다").ok, false);
 
 const player = {
   name: "민수",

@@ -6,6 +6,8 @@ const DEFAULT_DATA = {
   daily: {},
   settings: { judgeUrl: "http://localhost:8787", offline: false, tutorialSeen: false },
   record: { wins: 0, losses: 0 },
+  // 로그인 계정 관련 로컬 상태. inherited는 게스트 기록을 계정에 한 번만 승계하기 위한 표시다.
+  account: { inherited: false },
 };
 
 export function loadData() {
@@ -17,6 +19,7 @@ export function loadData() {
       progress: { ...DEFAULT_DATA.progress, ...saved.progress },
       settings: { ...DEFAULT_DATA.settings, ...saved.settings },
       record: { ...DEFAULT_DATA.record, ...saved.record },
+      account: { ...DEFAULT_DATA.account, ...saved.account },
     };
   } catch {
     return structuredClone(DEFAULT_DATA);

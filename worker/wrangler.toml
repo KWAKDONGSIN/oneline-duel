@@ -1,0 +1,8 @@
+name = "onelineduel-judge"
+main = "worker.js"
+compatibility_date = "2026-08-01"
+
+# 모델은 여기서 바꿀 수 있다. API 키는 절대 여기 넣지 말고 아래 명령으로 등록한다.
+#   npx wrangler secret put OPENAI_API_KEY
+[vars]
+OPENAI_MODEL = "gpt-5-mini"

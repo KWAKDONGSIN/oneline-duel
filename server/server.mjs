@@ -71,7 +71,7 @@ function tagsFor(text) {
 }
 
 function validatePayload(payload) {
-  if (!payload || !["boss", "local2p"].includes(payload.mode) || !Number.isInteger(payload.turn)) {
+  if (!payload || !["boss", "local2p", "daily"].includes(payload.mode) || !Number.isInteger(payload.turn)) {
     return "필수 전투 정보가 없습니다.";
   }
   for (const side of ["p1", "p2"]) {
@@ -207,7 +207,8 @@ function startMatch(first, second, mode) {
   beginTurn(battle);
   const match = {
     id, mode, players: { p1: first, p2: second }, battle, submitted: {}, revision: 0,
-    lastTurn: null, ratingChanges: null, createdAt: Date.now(),
+    lastTurn: null, ratingChanges: null, resolving: false,
+    createdAt: Date.now(), updatedAt: Date.now(),
   };
   matches.set(id, match);
   playerMatch.set(first.id, id);
@@ -259,13 +260,20 @@ function updateRating(match) {
 }
 
 async function resolveMatch(match) {
-  if (!match.submitted.p1 || !match.submitted.p2) return;
+  // 판정에 수 초가 걸리므로, 두 사람이 거의 동시에 제출해도 판정이 중복 실행되지 않게 잠근다.
+  if (match.resolving || !match.submitted.p1 || !match.submitted.p2) return;
+  match.resolving = true;
+  try { await runJudgement(match); } finally { match.resolving = false; }
+}
+
+async function runJudgement(match) {
   const payload = buildJudgePayload(match.battle, match.submitted.p1, match.submitted.p2);
   const judgment = await judgePayload(payload);
   match.battle.log.push({ type: "skill", who: "p1", text: `${match.players.p1.character.name}: ${match.submitted.p1}` });
   match.battle.log.push({ type: "skill", who: "p2", text: `${match.players.p2.character.name}: ${match.submitted.p2}` });
   resolveTurn(match.battle, judgment);
   match.revision += 1;
+  match.updatedAt = Date.now();
   match.lastTurn = { revision: match.revision, judgment, texts: { ...match.submitted } };
   match.submitted = {};
   if (match.battle.phase === "over") updateRating(match);
@@ -297,6 +305,59 @@ function ensureBotIfNeeded(playerId) {
   return null;
 }
 
+// IP당 호출 제한. 외부에 배포했을 때 판정 API가 무제한으로 호출되는 것을 막는다.
+// 한 턴에 판정 1회이므로, 정상 플레이가 막히지 않을 만큼 여유를 두고 남용만 차단한다.
+const RATE_PER_MINUTE = Number(env.RATE_PER_MINUTE || 20);
+const RATE_PER_DAY = Number(env.RATE_PER_DAY || 300);
+const rateBuckets = new Map();
+
+function rateLimited(ip) {
+  const now = Date.now();
+  const bucket = rateBuckets.get(ip) || { minute: [], day: [] };
+  bucket.minute = bucket.minute.filter((time) => now - time < 60_000);
+  bucket.day = bucket.day.filter((time) => now - time < 86_400_000);
+  if (bucket.minute.length >= RATE_PER_MINUTE || bucket.day.length >= RATE_PER_DAY) {
+    rateBuckets.set(ip, bucket);
+    return true;
+  }
+  bucket.minute.push(now);
+  bucket.day.push(now);
+  rateBuckets.set(ip, bucket);
+  if (rateBuckets.size > 5_000) {
+    for (const [key, value] of rateBuckets) {
+      if (!value.day.length) rateBuckets.delete(key);
+      if (rateBuckets.size <= 2_500) break;
+    }
+  }
+  return false;
+}
+
+function clientIp(request) {
+  return (request.headers["x-forwarded-for"] || "").split(",")[0].trim()
+    || request.socket.remoteAddress || "unknown";
+}
+
+// 끝난 지 오래된 대전 기록을 정리한다. 브라우저를 그냥 닫은 경우에도 메모리가 늘지 않게 한다.
+const MATCH_TTL_MS = 30 * 60_000;
+function sweepMatches() {
+  const now = Date.now();
+  for (const [id, match] of matches) {
+    const idle = now - (match.updatedAt || match.createdAt);
+    if (idle > MATCH_TTL_MS) {
+      matches.delete(id);
+      for (const [playerId, matchId] of playerMatch) {
+        if (matchId === id) playerMatch.delete(playerId);
+      }
+    }
+  }
+  for (const pool of Object.values(queues)) {
+    for (let index = pool.length - 1; index >= 0; index -= 1) {
+      if (now - pool[index].joinedAt > MATCH_TTL_MS) pool.splice(index, 1);
+    }
+  }
+}
+setInterval(sweepMatches, 5 * 60_000).unref?.();
+
 function sendJson(response, status, body) {
   response.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*",
@@ -318,6 +379,9 @@ const server = http.createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
   try {
     if (request.method === "POST" && url.pathname === "/judge") {
+      if (rateLimited(clientIp(request))) {
+        return sendJson(response, 429, { error: "요청이 너무 잦습니다. 잠시 후 다시 시도해 주세요." });
+      }
       const payload = await readJson(request);
       const error = validatePayload(payload);
       if (error) return sendJson(response, 400, { error });
@@ -358,11 +422,16 @@ const server = http.createServer(async (request, response) => {
       const validation = validateInput(match.battle, side, String(body.text || ""));
       if (!validation.ok) return sendJson(response, 400, { error: validation.reason });
       match.submitted[side] = String(body.text).trim();
+      match.updatedAt = Date.now();
       const opponentSide = side === "p1" ? "p2" : "p1";
       const opponent = match.players[opponentSide];
       if (opponent.bot) {
-        const move = botMove(opponent.rating, match.battle);
-        validateInput(match.battle, opponentSide, move);
+        // 봇도 기력 규칙을 지켜야 한다. 검증에 실패하면 가장 짧은 기술로 대체한다.
+        let move = botMove(opponent.rating, match.battle);
+        if (!validateInput(match.battle, opponentSide, move).ok) {
+          move = BOT_MOVES[0];
+          if (!validateInput(match.battle, opponentSide, move).ok) move = "숨을 고른다";
+        }
         match.submitted[opponentSide] = move;
       }
       await resolveMatch(match);
@@ -379,6 +448,10 @@ const server = http.createServer(async (request, response) => {
       const match = matches.get(matchId);
       if (match?.battle.phase === "over") matches.delete(matchId);
       return sendJson(response, 200, { ok: true });
+    }
+    // 클라이언트가 "이 서버가 대전까지 지원하는지" 판별하는 데 쓴다. 배포 Worker는 pvp가 없다.
+    if (request.method === "GET" && url.pathname === "/health") {
+      return sendJson(response, 200, { ok: true, pvp: true });
     }
     return sendJson(response, 404, { error: "Not found" });
   } catch {

@@ -31,3 +31,28 @@ Node.js가 설치된 PowerShell에서 다음 명령을 실행한 뒤 브라우�
 실시간 유저 대전은 같은 주소를 브라우저 창 두 개에서 열고 각 창에서 서로 다른 캐릭터로 같은 모드의
 매칭을 시작하면 시험할 수 있습니다. 같은 와이파이의 다른 기기에서는 실행 PC의 내부 IP 주소와
 8000번 포트로 접속합니다.
+
+## 인터넷에 배포하기 (심사 제출용)
+
+게임 화면은 정적 파일이라 GitHub Pages에 그대로 올릴 수 있지만, AI 심판은 API 키를 숨겨야 하므로
+별도의 판정 서버가 필요합니다. `worker/`에 Cloudflare Workers용 판정 서버가 들어 있습니다.
+
+```powershell
+node worker/build-prompt.mjs          # JUDGE_PROMPT.md를 Worker용 모듈로 굽는다
+cd worker
+npx wrangler login
+npx wrangler secret put OPENAI_API_KEY   # 키를 입력한다. 코드에는 절대 넣지 않는다
+npx wrangler deploy
+```
+
+배포되면 `https://onelineduel-judge.<계정>.workers.dev` 주소가 나옵니다. 게임 화면의 `설정`에서
+`판정 서버 주소`를 이 주소로 바꾸면 인터넷 어디서나 AI 판정으로 플레이할 수 있습니다.
+
+`JUDGE_PROMPT.md`를 수정하면 `node worker/build-prompt.mjs`를 다시 실행하고 재배포해야 합니다.
+
+주의할 점이 두 가지 있습니다.
+
+- Worker는 보스전 판정(`/judge`)만 제공합니다. 온라인 대전(`/pvp/*`)은 서버가 대전 상태를
+  들고 있어야 해서 로컬 `server/server.mjs`에서만 동작합니다.
+- 판정 서버에는 IP당 분당 20회·하루 300회 제한이 걸려 있습니다. OpenAI 대시보드에서 지출 한도도
+  별도로 설정해 두세요.

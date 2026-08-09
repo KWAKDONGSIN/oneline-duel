@@ -1,5 +1,18 @@
 const DEFAULT_JUDGE_URL = "http://localhost:8787";
 
+// 인터넷에 배포했을 때 쓸 판정 서버(Cloudflare Worker) 주소.
+// `npx wrangler deploy` 후 나오는 https 주소를 여기에 넣는다. 비어 있으면 배포 환경에서는
+// 약식 판정으로만 동작한다.
+const DEPLOYED_JUDGE_URL = "";
+
+// 같은 와이파이의 다른 기기(폰)에서 접속한 경우인지 판별한다.
+// 사설 IP일 때만 PC의 판정 서버로 주소를 바꿔 준다.
+function isLanHost(hostname) {
+  return /^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname)
+    || /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)
+    || /^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/.test(hostname);
+}
+
 const KEYWORD_RULES = [
   { words: ["용", "드래곤", "괴수"], element: "fire", motion: "summon" },
   { words: ["마법", "마법봉", "주문", "마술"], element: "light", motion: "cast" },
@@ -62,13 +75,27 @@ export function fallbackJudgment(payload) {
 function loadSettings() {
   try {
     const saved = JSON.parse(localStorage.getItem("old:v1") || "{}");
-    const savedUrl = saved.settings?.judgeUrl || DEFAULT_JUDGE_URL;
-    const judgeUrl = /^http:\/\/(localhost|127\.0\.0\.1):8787$/i.test(savedUrl) &&
-      typeof location !== "undefined" && !["localhost", "127.0.0.1"].includes(location.hostname)
-      ? `http://${location.hostname}:8787` : savedUrl;
+    const hostname = typeof location !== "undefined" ? location.hostname : "localhost";
+    const isLocalPage = ["localhost", "127.0.0.1"].includes(hostname);
+    const isDefaultUrl = /^http:\/\/(localhost|127\.0\.0\.1):8787$/i.test(saved.settings?.judgeUrl || DEFAULT_JUDGE_URL);
+
+    let judgeUrl = saved.settings?.judgeUrl || DEFAULT_JUDGE_URL;
+
+    // 사용자가 직접 지정한 주소가 아니라 기본값일 때만 환경에 맞춰 보정한다.
+    if (isDefaultUrl && !isLocalPage) {
+      if (isLanHost(hostname)) {
+        // 같은 와이파이의 폰에서 PC 서버로 접속하는 경우
+        judgeUrl = `http://${hostname}:8787`;
+      } else {
+        // 인터넷에 배포된 경우. https 페이지에서 http 주소를 부르면 브라우저가 차단하므로
+        // 배포 Worker 주소가 없으면 아예 비워 두고 약식 판정으로 넘어가게 한다.
+        judgeUrl = DEPLOYED_JUDGE_URL;
+      }
+    }
+
     return {
       judgeUrl,
-      offline: Boolean(saved.settings?.offline),
+      offline: Boolean(saved.settings?.offline) || !judgeUrl,
     };
   } catch {
     return { judgeUrl: DEFAULT_JUDGE_URL, offline: false };
