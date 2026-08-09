@@ -96,16 +96,29 @@ export default {
           model: env.OPENAI_MODEL || "gpt-5-mini",
           instructions: JUDGE_PROMPT,
           input: userMessage(payload),
-          max_output_tokens: 500,
+          // 추론 모델은 내부 추론에도 토큰을 쓴다. 한도가 빠듯하면 정작 출력이 비어서 돌아온다.
+          max_output_tokens: 2000,
+          reasoning: { effort: "low" },
           text: { format: { type: "json_schema", name: "judgment", strict: true, schema: JUDGMENT_SCHEMA } },
         }),
         signal: controller.signal,
       });
-      if (!response.ok) return json({ error: `판정 모델 오류 (${response.status})` }, 502);
+      if (!response.ok) {
+        const detail = await response.text().catch(() => "");
+        return json({ error: `판정 모델 오류 (${response.status})`, detail: detail.slice(0, 300) }, 502);
+      }
       const body = await response.json();
-      const outputText = body.output?.flatMap((item) => item.content || [])
-        .find((content) => content.type === "output_text")?.text;
-      if (!outputText) return json({ error: "판정 결과가 비어 있습니다." }, 502);
+      const outputText = body.output_text
+        || body.output?.flatMap((item) => item.content || [])
+          .find((content) => content.type === "output_text")?.text;
+      if (!outputText) {
+        // 왜 비었는지 알 수 있게 상태를 함께 돌려준다 (토큰 소진인지, 안전 필터인지 등).
+        return json({
+          error: "판정 결과가 비어 있습니다.",
+          status: body.status,
+          incomplete: body.incomplete_details,
+        }, 502);
+      }
       return json(JSON.parse(outputText));
     } catch {
       // 클라이언트가 약식 판정으로 넘어가도록 오류를 그대로 알린다.

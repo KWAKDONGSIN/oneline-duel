@@ -3,7 +3,7 @@ const DEFAULT_JUDGE_URL = "http://localhost:8787";
 // 인터넷에 배포했을 때 쓸 판정 서버(Cloudflare Worker) 주소.
 // `npx wrangler deploy` 후 나오는 https 주소를 여기에 넣는다. 비어 있으면 배포 환경에서는
 // 약식 판정으로만 동작한다.
-const DEPLOYED_JUDGE_URL = "";
+const DEPLOYED_JUDGE_URL = "https://onelineduel-judge.dkmdkm999.workers.dev";
 
 // 같은 와이파이의 다른 기기(폰)에서 접속한 경우인지 판별한다.
 // 사설 IP일 때만 PC의 판정 서버로 주소를 바꿔 준다.
