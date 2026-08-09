@@ -15,7 +15,7 @@ export function getPlayerId() {
 // 판정용 Cloudflare Worker는 요청마다 초기화되는 무상태 구조라 이 역할을 맡을 수 없다.
 // 그래서 대전 서버만 따로 호스팅하고, 그 주소를 여기에 적는다.
 // 배포 후 나온 주소를 넣으면 인터넷에서도 대전이 된다. 비워 두면 로컬 실행에서만 동작한다.
-const DEPLOYED_PVP_URL = "";
+const DEPLOYED_PVP_URL = "https://oneline-duel.onrender.com";
 
 function serverUrl() {
   const hostname = location.hostname;
