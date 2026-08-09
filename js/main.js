@@ -506,7 +506,7 @@ function renderResult() {
   const lastNarration = [...battle.log].reverse().find((entry) => entry.type === "narration")?.text ?? "";
   document.querySelector("#result-content").innerHTML = `
     <div class="result-card">
-      <p class="result-kicker">개초딩게임</p>
+      <p class="result-kicker">무지개 반사</p>
       <h2>${title}</h2>
       <p>${escapeHtml(subtitle)}</p>
       <p class="record-line">${battle.turn}턴 · 부상 ${"🩸".repeat(battle.p1.wounds)} · 발악 ${battle.p1.lastStandUsed ? "사용" : "미사용"}</p>
@@ -549,18 +549,46 @@ async function loadGameData() {
 // ── 계정 (로그인·닉네임·랭킹) ───────────────────────────────────
 // 로그인은 어디까지나 선택이다. 아래 코드가 전부 실패해도 게스트 플레이는 그대로 동작해야 한다.
 
+// ── 다크 / 화이트 모드 ───────────────────────────────────────
+function applyTheme(theme) {
+  document.body.dataset.theme = theme;
+  document.querySelector('meta[name="theme-color"]')
+    ?.setAttribute("content", theme === "light" ? "#f6f6fa" : "#101014");
+}
+
+function currentTheme() {
+  return loadData().settings.theme === "light" ? "light" : "dark";
+}
+
+function toggleTheme() {
+  const next = currentTheme() === "light" ? "dark" : "light";
+  saveSettings({ theme: next });
+  applyTheme(next);
+  renderAccountBar();
+}
+
+function themeButtonHtml() {
+  const light = currentTheme() === "light";
+  return `<button class="theme-toggle" data-action="theme">${light ? "🌙 다크" : "☀️ 화이트"}</button>`;
+}
+
 function renderAccountBar() {
   const bar = document.querySelector("#account-bar");
   if (!bar) return;
-  if (!AUTH_ENABLED) { bar.innerHTML = ""; return; }
+  if (!AUTH_ENABLED) {
+    bar.innerHTML = themeButtonHtml();
+    bar.querySelector('[data-action="theme"]').addEventListener("click", toggleTheme);
+    return;
+  }
 
   const profile = getProfile();
-  bar.innerHTML = isLoggedIn()
+  bar.innerHTML = themeButtonHtml() + (isLoggedIn()
     ? `<span class="account-name">${escapeHtml(profile?.nickname || "닉네임 미설정")}</span>
        ${profile?.nickname ? "" : `<button class="link-button" data-action="set-nickname">닉네임 설정</button>`}
        <button class="link-button" data-action="logout">로그아웃</button>`
-    : `<button class="link-button" data-action="login">로그인</button>`;
+    : `<button class="link-button" data-action="login">로그인</button>`);
 
+  bar.querySelector('[data-action="theme"]').addEventListener("click", toggleTheme);
   bar.querySelector('[data-action="login"]')?.addEventListener("click", openLoginModal);
   bar.querySelector('[data-action="set-nickname"]')?.addEventListener("click", openNicknameModal);
   bar.querySelector('[data-action="logout"]')?.addEventListener("click", async () => {
@@ -675,5 +703,6 @@ async function initAccount() {
 }
 
 window.addEventListener("hashchange", () => renderRoute());
+applyTheme(currentTheme());   // 저장된 테마를 첫 화면부터 적용한다
 renderRoute();
 loadGameData().then(initAccount);

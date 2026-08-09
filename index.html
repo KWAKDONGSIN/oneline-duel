@@ -4,7 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101014">
-  <title>개초딩게임</title>
+  <meta property="og:title" content="무지개 반사">
+  <meta property="og:description" content="받아친 문장이 무기가 된다. AI 심판이 판정하는 턴제 텍스트 배틀.">
+  <title>무지개 반사</title>
   <link rel="stylesheet" href="./css/style.css">
   <script type="importmap">{ "imports": { "three": "./libs/three.module.js" } }</script>
 </head>
@@ -13,8 +15,29 @@
     <section id="home" class="screen" aria-labelledby="home-title">
       <div id="account-bar" class="account-bar"></div>
       <header class="hero">
-        <h1 id="home-title">개초딩게임</h1>
-        <p>당신이 쓴 문장이 무기가 된다</p>
+        <!-- 타이틀 일러스트: 거울로 빛을 되받아치는 그림. 문장으로 되받아친다는 게임의 컨셉을 그대로 담았다. -->
+        <svg class="hero-art" viewBox="0 0 800 300" role="img" aria-label="거울로 빛을 무지개로 되받아치는 그림">
+          <g class="ray">
+            <path d="M330 148 L30 40 L34 66 L330 154Z" fill="#ff3b30"/>
+            <path d="M330 150 L26 84 L28 108 L330 158Z" fill="#ff9500"/>
+            <path d="M330 152 L24 128 L26 150 L330 162Z" fill="#ffd60a"/>
+            <path d="M330 156 L26 172 L30 194 L330 166Z" fill="#34c759"/>
+            <path d="M330 158 L32 214 L38 236 L330 170Z" fill="#0a84ff"/>
+            <path d="M330 162 L42 254 L52 274 L330 174Z" fill="#af52de"/>
+          </g>
+          <path class="beam" d="M760 130 L392 150 L760 176Z"/>
+          <ellipse class="mirror-glass" cx="374" cy="156" rx="60" ry="86"/>
+          <ellipse class="mirror-frame" cx="374" cy="156" rx="60" ry="86"/>
+          <path class="mirror-frame" d="M374 244 L374 292" stroke-linecap="round"/>
+          <path class="blob" d="M470 156
+            C470 74 528 20 606 20 C688 20 748 78 748 158
+            C748 240 690 296 606 296 C528 296 470 240 470 156Z"/>
+          <path class="face" d="M520 132 q18 -22 36 0" stroke-linecap="round"/>
+          <path class="face" d="M512 196 q26 26 52 2" stroke-linecap="round"/>
+          <path class="blob" d="M448 268 q26 -30 58 -8 q-24 34 -58 8Z"/>
+        </svg>
+        <h1 id="home-title">무지개 반사</h1>
+        <p>받아친 문장이 무기가 된다</p>
       </header>
       <div id="home-content"></div>
     </section>

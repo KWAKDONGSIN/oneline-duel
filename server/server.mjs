@@ -461,5 +461,5 @@ const server = http.createServer(async (request, response) => {
 
 server.listen(PORT, () => {
   const judgeMode = env.MOCK === "1" || !env.OPENAI_API_KEY ? "MOCK" : env.OPENAI_MODEL || "gpt-5-mini";
-  console.log(`개초딩게임 서버: http://localhost:${PORT} (판정 ${judgeMode}, 봇 대기 ${BOT_WAIT_MS / 1000}초)`);
+  console.log(`무지개 반사 서버: http://localhost:${PORT} (판정 ${judgeMode}, 봇 대기 ${BOT_WAIT_MS / 1000}초)`);
 });

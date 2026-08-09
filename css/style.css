@@ -236,3 +236,60 @@ input:focus, textarea:focus { border-color: var(--p1); box-shadow: 0 0 0 3px rgb
 .leaderboard .rank-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .leaderboard .rank-score { font-weight: 700; }
 .leaderboard small { grid-column: 3 / -1; font-size: 11px; color: var(--sub, #8a8a9a); }
+
+/* ── 화이트 모드 ─────────────────────────────────────────── */
+/* 다크가 기본이고, body[data-theme="light"]일 때만 색을 갈아끼운다. */
+body[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f6f6fa;
+  --panel: #ffffff;
+  --panel-2: #eeeef4;
+  --text: #16161c;
+  --sub: #6a6a78;
+  --line: #d8d8e2;
+  background:
+    radial-gradient(circle at 50% -10%, rgba(201, 162, 39, 0.16), transparent 36rem),
+    var(--bg);
+}
+body[data-theme="light"] html { background: var(--bg); }
+body[data-theme="light"] .battle-log,
+body[data-theme="light"] .panel,
+body[data-theme="light"] .result-card { background: var(--panel); }
+
+/* ── 타이틀 일러스트 ─────────────────────────────────────── */
+.hero-art {
+  display: block;
+  width: min(100%, 460px);
+  margin: 0 auto 6px;
+  overflow: visible;
+}
+.hero-art .blob { fill: #ffffff; stroke: #101014; stroke-width: 9; }
+.hero-art .face { fill: none; stroke: #101014; stroke-width: 9; }
+.hero-art .mirror-frame { fill: none; stroke: #8ce600; stroke-width: 12; }
+.hero-art .mirror-glass { fill: #cdf0ff; }
+.hero-art .beam { fill: #eaf9ff; opacity: 0.85; }
+/* 무지개가 천천히 번쩍이며 살아 있는 느낌을 준다. */
+.hero-art .ray { animation: rayPulse 2.6s ease-in-out infinite; transform-origin: 330px 156px; }
+@keyframes rayPulse {
+  0%, 100% { transform: scale(1); opacity: 0.95; }
+  50% { transform: scale(1.035); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .hero-art .ray { animation: none; } }
+
+body[data-theme="light"] .hero-art .blob { fill: #ffffff; stroke: #16161c; }
+body[data-theme="light"] .hero-art .face { stroke: #16161c; }
+
+.hero h1 { letter-spacing: -0.04em; }
+.hero { padding-top: 6vh; }
+
+/* 테마 토글 버튼 */
+.theme-toggle {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.theme-toggle:hover { background: var(--panel-2); }

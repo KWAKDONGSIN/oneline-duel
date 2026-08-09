@@ -9,8 +9,7 @@ export const SUPABASE_ANON_KEY = "sb_publishable_KSOP67gXCTpB0Ewgq033CA_vhDBqMMi
 export const AUTH_ENABLED = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
 // Supabase에 등록한 소셜 로그인 제공자.
-// 네이버는 Supabase 내장 제공자가 아니어서 검수·커스텀 설정에 시간이 오래 걸려 이번 범위에서 제외했다.
+// 네이버는 내장 제공자가 아니고, 카카오는 이메일 동의항목이 비즈앱 전환을 요구해 이번 범위에서 제외했다.
 export const PROVIDERS = [
   { id: "google", label: "구글로 시작", ready: true },
-  { id: "kakao", label: "카카오로 시작", ready: true },
 ];
