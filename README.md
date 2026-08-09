@@ -16,7 +16,7 @@
 
 ## 실행
 
-Node.js와 Python이 설치된 PowerShell에서 다음 명령을 실행한 뒤 표시되는 주소를 브라우저에서 엽니다.
+Node.js가 설치된 PowerShell에서 다음 명령을 실행한 뒤 브라우저에서 `http://localhost:8000`을 엽니다.
 
 ```powershell
 .\run-dev.ps1
