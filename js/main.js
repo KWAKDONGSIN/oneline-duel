@@ -155,23 +155,24 @@ function renderHome() {
   renderRankCard();
 }
 
-// 대전 서버가 준비될 때까지 버튼을 잠가 둔다. 눌렀는데 실패하는 것보다 낫다.
+// 대전 서버는 접속이 없으면 잠든다. 깨는 데 1분 가까이 걸리므로 홈에 들어오는 순간 미리 깨우고,
+// 그동안에도 버튼은 남겨 둔다. 자고 있다는 이유로 기능이 사라져 보이면 안 된다.
 function updatePvpButtons() {
   const ranked = document.querySelector('[data-action="ranked"]');
   const casual = document.querySelector('[data-action="casual"]');
   if (!ranked || !casual) return;
-  ranked.textContent = "랭크전 (서버 확인 중…)";
+
+  ranked.disabled = false;
+  casual.disabled = false;
+  ranked.textContent = "랭크전";
+  casual.textContent = "일반전";
+
   wakePvpServer().then((ok) => {
-    const stillHere = document.querySelector('[data-action="ranked"]');
-    if (!stillHere) return;
-    if (ok) {
-      ranked.textContent = "랭크전";
-      ranked.disabled = false;
-      casual.disabled = false;
-    } else {
-      // 서버가 없으면 아예 감춘다. 회색 버튼이 남아 있으면 미완성으로 보인다.
-      ranked.remove();
-      casual.remove();
+    if (!document.querySelector('[data-action="ranked"]')) return;
+    if (!ok) {
+      // 서버를 못 깨웠어도 버튼은 남긴다. 누르면 그때 다시 깨우기를 시도한다.
+      ranked.textContent = "랭크전 (서버 깨우는 중)";
+      casual.textContent = "일반전 (서버 깨우는 중)";
     }
   });
 }
@@ -441,13 +442,24 @@ async function startOnlineMatch(mode) {
   navigate("battle");
   renderMatchmaking(mode);
   try {
-    const state = await joinQueue(mode, character);
+    // 서버가 자고 있으면 첫 요청이 실패한다. 깨어날 때까지 몇 번 더 시도한다.
+    let state = null;
+    for (let attempt = 0; attempt < 4 && !state; attempt += 1) {
+      try {
+        state = await joinQueue(mode, character);
+      } catch (error) {
+        if (attempt === 3) throw error;
+        const note = document.querySelector("#matchmaking-note");
+        if (note) note.textContent = "대전 서버를 깨우는 중입니다. 최대 1분쯤 걸릴 수 있습니다…";
+        await new Promise((resolve) => setTimeout(resolve, 15_000));
+      }
+    }
     await handleOnlineState(state);
     onlinePoll = setInterval(async () => {
       try { await handleOnlineState(await fetchMatchState()); } catch { /* 다음 폴링에서 다시 확인한다. */ }
     }, 800);
   } catch {
-    showToast("대전 서버에 연결할 수 없습니다. 판정 서버 주소를 확인하세요.");
+    showToast("대전 서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     renderHome();
     navigate("home");
   }
@@ -460,6 +472,7 @@ function renderMatchmaking(mode) {
       <p class="mode-label">${mode === "ranked" ? "랭크전" : "일반전"}</p>
       <h2>상대를 찾고 있습니다</h2>
       <p>비슷한 실력의 상대를 우선 검색합니다.<br>5초 동안 유저가 없으면 내 점수에 맞는 봇이 참가합니다.</p>
+      <p id="matchmaking-note" class="matchmaking-note"></p>
       <button class="button" id="cancel-match">매칭 취소</button>
     </div>`;
   document.querySelector("#cancel-match").addEventListener("click", async () => {

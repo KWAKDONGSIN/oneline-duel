@@ -404,3 +404,4 @@ body[data-theme="light"] .battle-log { border: 1px solid var(--line); }
 body[data-theme="light"] .jukebox-grid button { background: #ffffff; }
 body[data-theme="light"] .theme-toggle { background: #ffffff; }
 body[data-theme="light"] .status { background: var(--panel-2); }
+.matchmaking-note { margin-top: 10px; color: var(--gold); font-size: 0.82rem; min-height: 20px; }
