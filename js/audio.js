@@ -170,33 +170,97 @@ export function playSfx(name) {
   (SFX[name] || SFX.punch_rush)();
 }
 
-// ── 배경음 ───────────────────────────────────────────────────
-// 필드마다 드론(지속음) + 잡음층 + 간간이 울리는 음으로 분위기를 만든다.
+// ── 배경음악 ─────────────────────────────────────────────────
+// 드론(지속음)만 깔면 아무리 꾸며도 어둡게 들린다. 그래서 실제 게임 BGM처럼
+// 베이스 + 화음 + 멜로디가 박자에 맞춰 도는 시퀀서 방식으로 만들었다.
+
+const N = {   // 음이름 → 주파수
+  C3: 131, D3: 147, E3: 165, F3: 175, G3: 196, A3: 220, B3: 247,
+  C4: 262, D4: 294, E4: 330, F4: 349, G4: 392, A4: 440, B4: 494,
+  C5: 523, D5: 587, E5: 659, F5: 698, G5: 784, A5: 880, B5: 988,
+  C6: 1047, D6: 1175, E6: 1319, G6: 1568,
+};
+const _ = null;   // 쉼표
+
+// 멜로디는 전부 메이저 펜타토닉 계열이라 밝고 경쾌하게 들린다.
 const FIELD_MUSIC = {
-  1:  { name: "화산지대",     drone: [55, 82.5], wave: "sawtooth", noise: { type: "lowpass", freq: 320, level: 0.16 }, motif: [110, 131, 98], every: 3.2, moWave: "triangle" },
-  2:  { name: "폭우",         drone: [98, 147],  wave: "sine",     noise: { type: "highpass", freq: 1400, level: 0.3 }, motif: [587, 494, 440], every: 2.4, moWave: "sine" },
-  3:  { name: "뇌운",         drone: [65, 98],   wave: "sawtooth", noise: { type: "bandpass", freq: 600, level: 0.18 }, motif: [220, 262, 165], every: 2.0, moWave: "square" },
-  4:  { name: "모래폭풍",     drone: [73, 110],  wave: "triangle", noise: { type: "bandpass", freq: 900, level: 0.34 }, motif: [294, 349, 262], every: 3.6, moWave: "triangle" },
-  5:  { name: "얼어붙은 호수", drone: [131, 196], wave: "sine",     noise: { type: "highpass", freq: 3000, level: 0.12 }, motif: [1047, 1319, 880], every: 2.8, moWave: "sine" },
-  6:  { name: "고요한 도서관", drone: [87, 131],  wave: "sine",     noise: { type: "lowpass", freq: 200, level: 0.05 }, motif: [349, 440, 523], every: 4.5, moWave: "triangle" },
-  7:  { name: "거울의 방",     drone: [131, 165], wave: "triangle", noise: { type: "highpass", freq: 4000, level: 0.08 }, motif: [1047, 1245, 1568], every: 2.2, moWave: "sine" },
-  8:  { name: "그믐밤",       drone: [41, 61.7], wave: "sine",     noise: { type: "lowpass", freq: 260, level: 0.09 }, motif: [131, 156, 117], every: 4.0, moWave: "sine" },
-  9:  { name: "성역",         drone: [131, 196, 262], wave: "sine", noise: null, motif: [523, 659, 784], every: 3.4, moWave: "sine" },
-  10: { name: "무중력 공간",   drone: [98, 147, 185], wave: "sine", noise: { type: "highpass", freq: 2200, level: 0.07 }, motif: [784, 988, 659], every: 3.0, moWave: "sine" },
-  11: { name: "콜로세움",     drone: [82, 123],  wave: "sawtooth", noise: { type: "bandpass", freq: 500, level: 0.14 }, motif: [330, 392, 262], every: 2.6, moWave: "square" },
-  12: { name: "안개 골짜기",   drone: [73, 110],  wave: "sine",     noise: { type: "lowpass", freq: 700, level: 0.16 }, motif: [220, 294, 247], every: 3.8, moWave: "sine" },
+  1: { name: "화산지대", bpm: 152, lead: "square", bassWave: "triangle",
+       bass: [N.C3, N.C3, N.G3, N.C3, N.F3, N.F3, N.C3, N.G3],
+       melody: [N.C5, N.E5, N.G5, N.E5, N.C5, N.D5, N.E5, _, N.F5, N.E5, N.D5, N.C5, N.G4, _, N.C5, _],
+       noise: { type: "lowpass", freq: 300, level: 0.07 } },
+  2: { name: "폭우", bpm: 138, lead: "triangle", bassWave: "sine",
+       bass: [N.F3, N.F3, N.C4, N.F3, N.A3, N.A3, N.F3, N.C4],
+       melody: [N.A4, N.C5, N.D5, N.F5, N.D5, N.C5, N.A4, _, N.G4, N.A4, N.C5, N.A4, N.F4, _, N.A4, _],
+       noise: { type: "highpass", freq: 1600, level: 0.16 } },
+  3: { name: "뇌운", bpm: 168, lead: "square", bassWave: "square",
+       bass: [N.E3, N.E3, N.B3, N.E3, N.A3, N.A3, N.E3, N.B3],
+       melody: [N.E5, N.G5, N.A5, N.G5, N.E5, N.D5, N.E5, _, N.A5, N.G5, N.E5, N.D5, N.E5, _, _, _],
+       noise: { type: "bandpass", freq: 700, level: 0.08 } },
+  4: { name: "모래폭풍", bpm: 144, lead: "triangle", bassWave: "triangle",
+       bass: [N.D3, N.D3, N.A3, N.D3, N.G3, N.G3, N.D3, N.A3],
+       melody: [N.D5, N.F5, N.G5, N.A5, N.G5, N.F5, N.D5, _, N.C5, N.D5, N.F5, N.D5, N.A4, _, N.D5, _],
+       noise: { type: "bandpass", freq: 1000, level: 0.2 } },
+  5: { name: "얼어붙은 호수", bpm: 132, lead: "sine", bassWave: "sine",
+       bass: [N.G3, N.G3, N.D4, N.G3, N.C4, N.C4, N.G3, N.D4],
+       melody: [N.G5, N.B5, N.D6, N.B5, N.G5, N.A5, N.B5, _, N.C6, N.B5, N.G5, N.E5, N.G5, _, _, _],
+       noise: { type: "highpass", freq: 3200, level: 0.07 } },
+  6: { name: "고요한 도서관", bpm: 116, lead: "triangle", bassWave: "sine",
+       bass: [N.F3, N.F3, N.C4, N.F3, N.D4, N.D4, N.A3, N.C4],
+       melody: [N.F4, N.A4, N.C5, N.A4, N.F4, N.G4, N.A4, _, N.C5, N.A4, N.G4, N.F4, N.C5, _, _, _],
+       noise: null },
+  7: { name: "거울의 방", bpm: 146, lead: "sine", bassWave: "triangle",
+       bass: [N.C4, N.C4, N.G3, N.C4, N.E3, N.E3, N.G3, N.C4],
+       melody: [N.C6, N.G5, N.E5, N.G5, N.C6, N.D6, N.C6, _, N.G5, N.C6, N.E6, N.C6, N.G5, _, N.C6, _],
+       noise: { type: "highpass", freq: 4200, level: 0.05 } },
+  8: { name: "그믐밤", bpm: 126, lead: "triangle", bassWave: "sine",
+       bass: [N.A3, N.A3, N.E3, N.A3, N.D3, N.D3, N.A3, N.E3],
+       melody: [N.A4, N.C5, N.E5, N.C5, N.A4, N.G4, N.A4, _, N.D5, N.E5, N.C5, N.A4, N.E5, _, _, _],
+       noise: { type: "lowpass", freq: 400, level: 0.06 } },
+  9: { name: "성역", bpm: 128, lead: "sine", bassWave: "sine",
+       bass: [N.C4, N.C4, N.G3, N.C4, N.F3, N.F3, N.C4, N.G3],
+       melody: [N.C5, N.E5, N.G5, N.C6, N.G5, N.E5, N.G5, _, N.F5, N.E5, N.D5, N.C5, N.G5, _, _, _],
+       noise: null },
+  10: { name: "무중력 공간", bpm: 140, lead: "sine", bassWave: "triangle",
+        bass: [N.D4, N.D4, N.A3, N.D4, N.G3, N.G3, N.A3, N.D4],
+        melody: [N.D5, N.A5, N.G5, N.A5, N.D6, N.A5, N.G5, _, N.E5, N.G5, N.A5, N.D6, N.A5, _, _, _],
+        noise: { type: "highpass", freq: 2600, level: 0.05 } },
+  11: { name: "콜로세움", bpm: 160, lead: "square", bassWave: "square",
+        bass: [N.G3, N.G3, N.D4, N.G3, N.C4, N.C4, N.G3, N.D4],
+        melody: [N.G5, N.A5, N.B5, N.D6, N.B5, N.A5, N.G5, _, N.D5, N.G5, N.B5, N.G5, N.D6, _, N.G5, _],
+        noise: { type: "bandpass", freq: 520, level: 0.07 } },
+  12: { name: "안개 골짜기", bpm: 134, lead: "triangle", bassWave: "sine",
+        bass: [N.E3, N.E3, N.B3, N.E3, N.A3, N.A3, N.E3, N.B3],
+        melody: [N.E5, N.G5, N.A5, N.B5, N.A5, N.G5, N.E5, _, N.D5, N.E5, N.G5, N.E5, N.B4, _, N.E5, _],
+        noise: { type: "lowpass", freq: 900, level: 0.09 } },
 };
 
-// 메인 화면 BGM. 거울에 반사되는 빛처럼, 밝은 음이 되돌아오는 느낌으로 만들었다.
+// 메인 테마. 빛이 거울에 튕겨 되돌아오듯, 올라간 음이 그대로 되돌아오는 선율.
 const TITLE_MUSIC = {
-  name: "무지개 반사",
-  drone: [131, 196], wave: "triangle",
-  noise: { type: "highpass", freq: 3500, level: 0.05 },
-  motif: [523, 659, 784, 988, 784, 659], every: 0.42, moWave: "triangle",
+  name: "무지개 반사", bpm: 150, lead: "square", bassWave: "triangle",
+  bass: [N.C3, N.C3, N.G3, N.C3, N.A3, N.A3, N.F3, N.G3],
+  melody: [
+    N.C5, N.E5, N.G5, N.C6, N.G5, N.E5, N.C5, _,
+    N.A4, N.C5, N.E5, N.A5, N.E5, N.C5, N.A4, _,
+  ],
+  noise: null,
 };
 
 export function fieldMusicList() {
   return Object.entries(FIELD_MUSIC).map(([id, m]) => ({ id: Number(id), name: m.name }));
+}
+
+// 짧은 음 하나. 게임 BGM 특유의 통통 튀는 느낌을 위해 감쇠를 빠르게 잡았다.
+function playNote(bus, freq, wave, when, duration, peak) {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = wave;
+  osc.frequency.setValueAtTime(freq, when);
+  osc.connect(gain).connect(bus);
+  gain.gain.setValueAtTime(0, when);
+  gain.gain.linearRampToValueAtTime(peak, when + 0.012);
+  gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
+  osc.start(when);
+  osc.stop(when + duration + 0.02);
 }
 
 function startMusic(spec, key) {
@@ -210,25 +274,10 @@ function startMusic(spec, key) {
   const bed = ctx.createGain();
   bed.gain.value = 0;
   bed.connect(musicBus);
-  bed.gain.linearRampToValueAtTime(1, ctx.currentTime + 1.2);   // 부드럽게 들어온다
+  bed.gain.linearRampToValueAtTime(1, ctx.currentTime + 0.6);
   nodes.push(bed);
 
-  // 지속음 화음
-  for (const freq of spec.drone) {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    const filter = ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.value = 900;
-    osc.type = spec.wave;
-    osc.frequency.value = freq;
-    gain.gain.value = 0.22 / spec.drone.length;
-    osc.connect(filter).connect(gain).connect(bed);
-    osc.start();
-    nodes.push(osc, gain, filter);
-  }
-
-  // 잡음층 (비·바람·모래 같은 환경음)
+  // 환경음(비·바람·모래)은 아주 얕게만 깔아 분위기만 남긴다.
   if (spec.noise) {
     const src = noiseSource(true);
     const filter = ctx.createBiquadFilter();
@@ -241,25 +290,31 @@ function startMusic(spec, key) {
     nodes.push(src, gain, filter);
   }
 
-  // 간간이 울리는 선율
+  const eighth = 30 / spec.bpm;      // 8분음표 길이(초)
   let step = 0;
-  const timer = setInterval(() => {
-    if (!musicOn || !ctx) return;
-    const freq = spec.motif[step % spec.motif.length];
+
+  const tick = () => {
+    if (!ctx || !musicOn) { step += 1; return; }
+    const when = ctx.currentTime + 0.02;
+
+    // 베이스는 4분음표마다
+    if (step % 2 === 0) {
+      const note = spec.bass[(step / 2) % spec.bass.length];
+      if (note) playNote(bed, note, spec.bassWave, when, eighth * 1.7, 0.16);
+    }
+    // 멜로디는 8분음표마다
+    const lead = spec.melody[step % spec.melody.length];
+    if (lead) playNote(bed, lead, spec.lead, when, eighth * 1.15, 0.1);
+    // 두 마디마다 화음을 얹어 밝기를 더한다
+    if (step % 16 === 0) {
+      const root = spec.bass[0];
+      [root * 2, root * 2.5, root * 3].forEach((f) => playNote(bed, f, "triangle", when, eighth * 3, 0.045));
+    }
     step += 1;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = spec.moWave;
-    osc.frequency.value = freq;
-    osc.connect(gain).connect(bed);
-    const now = ctx.currentTime;
-    const decay = Math.min(1.6, spec.every * 0.9);
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.12, now + 0.04);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + decay);
-    osc.start(now);
-    osc.stop(now + decay + 0.05);
-  }, spec.every * 1000);
+  };
+
+  tick();
+  const timer = setInterval(tick, eighth * 1000);
 
   currentMusic = {
     stop() {
@@ -267,8 +322,8 @@ function startMusic(spec, key) {
       const now = ctx.currentTime;
       bed.gain.cancelScheduledValues(now);
       bed.gain.setValueAtTime(bed.gain.value, now);
-      bed.gain.linearRampToValueAtTime(0, now + 0.6);
-      setTimeout(() => nodes.forEach((n) => { try { n.stop?.(); n.disconnect?.(); } catch { /* 이미 정리됨 */ } }), 700);
+      bed.gain.linearRampToValueAtTime(0, now + 0.4);
+      setTimeout(() => nodes.forEach((n) => { try { n.stop?.(); n.disconnect?.(); } catch { /* 이미 정리됨 */ } }), 500);
     },
   };
 }

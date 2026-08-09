@@ -376,3 +376,10 @@ body[data-theme="light"] .hero-art .face { stroke: #16161c; }
 }
 .jukebox-grid button:hover { border-color: var(--gold); }
 .jukebox-grid button.playing { border-color: var(--gold); color: var(--gold); }
+
+/* 홈 화면이 한 눈에 들어오도록 타이틀 영역을 줄인다 (음악 감상 코너가 접히지 않게) */
+.hero { padding: 2vh 4px 14px; }
+.hero h1 { font-size: clamp(2.2rem, 10vw, 3.4rem); margin: 2px 0 4px; }
+.hero p { font-size: 0.9rem; }
+.hero-art { width: min(100%, 330px); margin-bottom: 2px; }
+.jukebox { margin-top: 12px; }
