@@ -1,0 +1,17 @@
+# Render 배포 설정. 저장소를 연결하면 이 파일을 읽어 자동으로 구성한다.
+# 대전 서버(실시간 매칭)만 여기서 돌린다. AI 심판은 Cloudflare Worker가 맡는다.
+services:
+  - type: web
+    name: rainbow-reflect-pvp
+    runtime: node
+    plan: free
+    buildCommand: ""
+    startCommand: node server/server.mjs
+    healthCheckPath: /health
+    envVars:
+      # 판정은 Worker가 담당하므로 이 서버는 약식 판정만 해도 된다.
+      # 실제 AI 판정까지 이 서버에서 하려면 MOCK을 지우고 OPENAI_API_KEY를 등록한다.
+      - key: MOCK
+        value: "1"
+      - key: BOT_WAIT_MS
+        value: "5000"

@@ -12,10 +12,11 @@ import { CHARACTER_EXAMPLES, validate as validateCharacter } from "./character.j
 import { requestJudgment } from "./judge.js";
 import {
   fetchMatchState,
-  fetchProfile,
   joinQueue,
   leaveMatch,
+  pvpAvailable,
   submitOnlineAction,
+  wakePvpServer,
 } from "./multiplayer.js";
 import * as render3d from "./render3d.js";
 import {
@@ -112,9 +113,9 @@ function renderHome() {
     <div id="rank-profile" class="rank-profile"><span class="tier-badge">실버</span><strong>1000점</strong><small>랭크 기록을 불러오는 중…</small></div>
     <p class="progress">격파 ${saved.progress.beatenBossIds.length} / 5</p>
     <div class="home-actions">
-      <button class="button primary ranked-button" data-action="ranked">랭크전</button>
-      <button class="button" data-action="casual">일반전</button>
-      <button class="button" data-action="challenge">보스 도전</button>
+      <button class="button primary" data-action="challenge">보스 도전</button>
+      <button class="button ranked-button" data-action="ranked" disabled>랭크전</button>
+      <button class="button" data-action="casual" disabled>일반전</button>
       <button class="button" data-action="ranking">랭킹</button>
       <button class="button" data-action="settings">설정</button>
     </div>
@@ -150,12 +151,46 @@ function renderHome() {
     });
   });
   renderAccountBar();
-  if (character) {
-    fetchProfile(character.name).then(({ profile }) => {
-      const target = document.querySelector("#rank-profile");
-      if (target) target.innerHTML = `<span class="tier-badge">${escapeHtml(profile.tier)}</span><strong>${profile.rating}점</strong><small>${profile.wins}승 ${profile.losses}패</small>`;
-    }).catch(() => {});
+  updatePvpButtons();
+  renderRankCard();
+}
+
+// 대전 서버가 준비될 때까지 버튼을 잠가 둔다. 눌렀는데 실패하는 것보다 낫다.
+function updatePvpButtons() {
+  const ranked = document.querySelector('[data-action="ranked"]');
+  const casual = document.querySelector('[data-action="casual"]');
+  if (!ranked || !casual) return;
+  ranked.textContent = "랭크전 (서버 확인 중…)";
+  wakePvpServer().then((ok) => {
+    const stillHere = document.querySelector('[data-action="ranked"]');
+    if (!stillHere) return;
+    if (ok) {
+      ranked.textContent = "랭크전";
+      ranked.disabled = false;
+      casual.disabled = false;
+    } else {
+      // 서버가 없으면 아예 감춘다. 회색 버튼이 남아 있으면 미완성으로 보인다.
+      ranked.remove();
+      casual.remove();
+    }
+  });
+}
+
+// 랭크 점수는 로그인했으면 계정 점수를, 아니면 대전 서버 기록을 보여준다.
+function renderRankCard() {
+  const target = document.querySelector("#rank-profile");
+  if (!target) return;
+  const profile = getProfile();
+  if (isLoggedIn() && profile?.nickname) {
+    target.innerHTML = `<span class="tier-badge">${escapeHtml(tierFor(profile.rating))}</span>`
+      + `<strong>${profile.rating}점</strong><small>${escapeHtml(profile.nickname)}</small>`;
+    return;
   }
+  if (isLoggedIn()) {
+    target.innerHTML = `<span class="tier-badge">기록 없음</span><strong>-</strong><small>닉네임을 설정하면 랭킹에 등록됩니다</small>`;
+    return;
+  }
+  target.innerHTML = `<span class="tier-badge">게스트</span><strong>-</strong><small>로그인하면 기록이 저장됩니다</small>`;
 }
 
 function openCharacterForm(character = null) {

@@ -1,0 +1,15 @@
+{
+  "name": "rainbow-reflect",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "무지개 반사 — 대전 서버 (실시간 매칭과 판정)",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server/server.mjs",
+    "dev": "node server/dev.mjs",
+    "test": "node --test tests/"
+  }
+}

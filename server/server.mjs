@@ -460,7 +460,8 @@ const server = http.createServer(async (request, response) => {
   }
 });
 
-server.listen(PORT, () => {
+// 호스팅 환경(Render 등)에서는 0.0.0.0에 바인딩해야 외부 요청을 받는다.
+server.listen(PORT, "0.0.0.0", () => {
   const judgeMode = env.MOCK === "1" || !env.OPENAI_API_KEY ? "MOCK" : env.OPENAI_MODEL || "gpt-5-mini";
   console.log(`무지개 반사 서버: http://localhost:${PORT} (판정 ${judgeMode}, 봇 대기 ${BOT_WAIT_MS / 1000}초)`);
 });

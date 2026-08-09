@@ -10,6 +10,7 @@
   --gold: #c9a227;
   --danger: #ff3c5a;
   --line: #30303e;
+  --input-bg: #121218;
   --radius: 18px;
 }
 
@@ -88,7 +89,7 @@ input, textarea {
   border-radius: 13px;
   outline: none;
   color: var(--text);
-  background: #121218;
+  background: var(--input-bg);
 }
 input { min-height: 48px; padding: 0 14px; }
 textarea { resize: none; padding: 13px 14px; line-height: 1.45; }
@@ -383,3 +384,23 @@ body[data-theme="light"] .hero-art .face { stroke: #16161c; }
 .hero p { font-size: 0.9rem; }
 .hero-art { width: min(100%, 330px); margin-bottom: 2px; }
 .jukebox { margin-top: 12px; }
+
+/* 화이트 모드에서 색이 고정돼 있던 요소들을 함께 밝게 맞춘다.
+   특히 입력창은 배경이 검게 남아 글자가 안 보이던 문제가 있었다. */
+body[data-theme="light"] {
+  --input-bg: #ffffff;
+}
+body[data-theme="light"] input,
+body[data-theme="light"] textarea {
+  background: var(--input-bg);
+  color: var(--text);
+  border-color: #cfcfdc;
+}
+body[data-theme="light"] input::placeholder,
+body[data-theme="light"] textarea::placeholder { color: #9a9aac; }
+/* 3D 무대는 필드 색이 씬 안에서 정해지므로 테두리만 밝게 */
+body[data-theme="light"] .stage { border: 1px solid var(--line); }
+body[data-theme="light"] .battle-log { border: 1px solid var(--line); }
+body[data-theme="light"] .jukebox-grid button { background: #ffffff; }
+body[data-theme="light"] .theme-toggle { background: #ffffff; }
+body[data-theme="light"] .status { background: var(--panel-2); }

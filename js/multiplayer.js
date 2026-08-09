@@ -11,25 +11,39 @@ export function getPlayerId() {
   return id;
 }
 
-// 온라인 대전은 상태를 들고 있는 서버가 필요해 로컬(또는 같은 와이파이) 실행에서만 동작한다.
+// 실시간 대전은 대기열과 진행 중인 매치를 계속 기억해야 해서 상태를 유지하는 서버가 필요하다.
+// 판정용 Cloudflare Worker는 요청마다 초기화되는 무상태 구조라 이 역할을 맡을 수 없다.
+// 그래서 대전 서버만 따로 호스팅하고, 그 주소를 여기에 적는다.
+// 배포 후 나온 주소를 넣으면 인터넷에서도 대전이 된다. 비워 두면 로컬 실행에서만 동작한다.
+const DEPLOYED_PVP_URL = "";
+
 function serverUrl() {
-  const configured = loadData().settings.judgeUrl || "http://localhost:8787";
-  const isDefault = /^http:\/\/(localhost|127\.0\.0\.1):8787$/i.test(configured);
-  const isLan = /^(192\.168|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(location.hostname);
-  if (isDefault && isLan) return `http://${location.hostname}:8787`;
-  return configured.replace(/\/$/, "");
+  const hostname = location.hostname;
+  const isLocalPage = ["localhost", "127.0.0.1"].includes(hostname);
+  const isLan = /^(192\.168|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(hostname);
+
+  if (isLocalPage) return "http://localhost:8787";
+  if (isLan) return `http://${hostname}:8787`;   // 같은 와이파이의 폰에서 PC 서버로
+  return DEPLOYED_PVP_URL.replace(/\/$/, "");    // 인터넷 배포 환경
 }
 
-// 지금 붙은 서버가 대전 기능을 제공하는지 확인한다(배포 Worker는 판정만 한다).
-export async function pvpAvailable() {
-  try {
-    const response = await fetch(`${serverUrl()}/health`, { signal: AbortSignal.timeout(2500) });
-    if (!response.ok) return false;
-    const body = await response.json();
-    return Boolean(body.pvp);
-  } catch {
-    return false;
-  }
+// 무료 호스팅은 접속이 없으면 서버가 잠든다. 홈 화면에 들어오는 순간 미리 깨워 두면
+// 실제로 대전 버튼을 누를 때쯤엔 준비가 끝나 있다.
+let availability = null;
+export function wakePvpServer() {
+  if (availability) return availability;
+  const url = serverUrl();
+  if (!url) { availability = Promise.resolve(false); return availability; }
+  availability = fetch(`${url}/health`, { signal: AbortSignal.timeout(60_000) })
+    .then((response) => (response.ok ? response.json() : null))
+    .then((body) => Boolean(body?.pvp))
+    .catch(() => false);
+  return availability;
+}
+
+// 지금 붙은 서버가 대전 기능을 제공하는지 확인한다.
+export function pvpAvailable() {
+  return wakePvpServer();
 }
 
 async function api(path, options = {}) {
