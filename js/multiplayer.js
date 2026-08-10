@@ -78,3 +78,8 @@ export function submitOnlineAction(text) {
 export function leaveMatch() {
   return api("/pvp/leave", { method: "POST", body: JSON.stringify({ playerId: getPlayerId() }) });
 }
+
+// 진행 중인 대전에서 항복한다. 즉시 패배 처리되고 랭크전이면 점수도 내려간다.
+export function forfeitMatch() {
+  return api("/pvp/forfeit", { method: "POST", body: JSON.stringify({ playerId: getPlayerId() }) });
+}

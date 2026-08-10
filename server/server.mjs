@@ -2,7 +2,7 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { beginTurn, buildJudgePayload, createBattle, isRainbowReflect, resolveRainbow, resolveTurn, validateInput } from "../js/battle.js";
+import { beginTurn, buildJudgePayload, createBattle, isRainbowReflect, resolveRainbow, resolveTurn, surrender, validateInput } from "../js/battle.js";
 
 const SERVER_DIR = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.dirname(SERVER_DIR);
@@ -448,6 +448,20 @@ const server = http.createServer(async (request, response) => {
         match.submitted[opponentSide] = move;
       }
       await resolveMatch(match);
+      return sendJson(response, 200, matchView(match, body.playerId));
+    }
+    if (request.method === "POST" && url.pathname === "/pvp/forfeit") {
+      const body = await readJson(request);
+      const match = matches.get(playerMatch.get(body.playerId));
+      if (!match || match.battle.phase === "over") return sendJson(response, 409, { error: "진행 중인 대전이 없습니다." });
+      const side = match.players.p1.id === body.playerId ? "p1" : "p2";
+      // 항복은 즉시 패배다. 상대가 다음 폴링에서 결과를 받도록 리비전을 올린다.
+      surrender(match.battle, side);
+      match.submitted = {};
+      match.revision += 1;
+      match.updatedAt = Date.now();
+      match.lastTurn = null;   // 재생할 판정이 없는 종료라 이전 턴 연출이 다시 돌지 않게 비운다
+      updateRating(match);
       return sendJson(response, 200, matchView(match, body.playerId));
     }
     if (request.method === "POST" && url.pathname === "/pvp/leave") {

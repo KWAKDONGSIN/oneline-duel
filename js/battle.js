@@ -116,6 +116,15 @@ export function resolveRainbow(battle, side) {
   return { events: [{ type: "rainbow", side }], result: null };
 }
 
+// 항복. 판정 없이 그 자리에서 진다. 부상과 턴 수는 그대로 남아
+// "몇 턴을 버티다 항복했는지"가 기록이 된다.
+export function surrender(battle, side) {
+  const opponentSide = side === "p1" ? "p2" : "p1";
+  battle.winner = opponentSide;
+  battle.phase = "over";
+  battle.log.push({ type: "system", who: side, text: `🏳️ ${battle[side].name}이(가) 항복했다.` });
+}
+
 export function countText(text) {
   return text.replace(/\s+/g, "").length;
 }

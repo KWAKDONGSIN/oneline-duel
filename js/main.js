@@ -7,6 +7,7 @@ import {
   isRainbowReflect,
   resolveRainbow,
   resolveTurn,
+  surrender,
   validateInput,
 } from "./battle.js";
 import { DIFFICULTIES, applyDifficulty, applyTurnGimmick, applyWoundGimmick, pickSkill } from "./boss.js";
@@ -14,6 +15,7 @@ import { CHARACTER_EXAMPLES, validate as validateCharacter } from "./character.j
 import { requestJudgment } from "./judge.js";
 import {
   fetchMatchState,
+  forfeitMatch,
   joinQueue,
   leaveMatch,
   pvpAvailable,
@@ -417,6 +419,7 @@ function renderBattle() {
         <button class="button primary" id="skill-submit" type="submit" disabled>기술 발동</button>
       </form>
       <div class="skill-meta"><span id="skill-count">0자 / 기력 ${p1.energy}</span><span id="skill-error" class="error"></span></div>
+      <button class="surrender-button" id="surrender-button" type="button">🏳️ 항복</button>
     </div>`;
 
   const log = document.querySelector("#battle-log");
@@ -441,6 +444,11 @@ function renderBattle() {
     }
   });
   document.querySelector("#skill-form").addEventListener("submit", submitSkill);
+  armSurrenderButton(document.querySelector("#surrender-button"), () => {
+    if (battle.phase !== "input") return;   // 판정이 도는 중에는 항복할 수 없다
+    surrender(battle, "p1");
+    renderResult();
+  });
   safe3d(() => {
     render3d.init(document.querySelector("#stage"));
     render3d.setField(battle.field);
@@ -455,6 +463,26 @@ function renderBattle() {
 // "#ff3b30" 같은 색 문자열을 three.js가 먹는 숫자로 바꾼다.
 function bossColorHex(definition) {
   return definition?.color ? parseInt(definition.color.replace("#", ""), 16) : null;
+}
+
+// 항복 버튼. 실수로 누르지 않게 한 번 누르면 3초간 확인 상태가 되고,
+// 그 안에 한 번 더 눌러야 진짜 항복한다.
+function armSurrenderButton(button, onConfirm) {
+  button.addEventListener("click", () => {
+    if (!button.dataset.armed) {
+      button.dataset.armed = "1";
+      button.textContent = "정말 항복할까요? (한 번 더)";
+      setTimeout(() => {
+        if (document.body.contains(button)) {
+          delete button.dataset.armed;
+          button.textContent = "🏳️ 항복";
+        }
+      }, 3_000);
+      return;
+    }
+    delete button.dataset.armed;
+    onConfirm();
+  });
 }
 
 async function submitSkill(event) {
@@ -616,8 +644,17 @@ function renderOnlineBattle(state) {
         <button class="button primary" id="online-skill-submit" type="submit" disabled>기술 발동</button>
       </form>
       <div class="skill-meta"><span id="online-skill-count">0자 / 기력 ${me.energy}</span><span id="online-skill-error" class="error"></span></div>`}
+      <button class="surrender-button" id="online-surrender" type="button">🏳️ 항복</button>
     </div>`;
 
+  armSurrenderButton(document.querySelector("#online-surrender"), async () => {
+    try {
+      const updated = await forfeitMatch();
+      await handleOnlineState(updated);
+    } catch {
+      showToast("항복 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+    }
+  });
   safe3d(() => {
     render3d.init(document.querySelector("#stage"));
     render3d.setField(state.battle.field);
@@ -691,9 +728,11 @@ function renderResult() {
   playSfx(draw ? "click" : won ? "win" : "lose");
   const hasNext = won && bossIndex + 1 < gameData.bosses.length;
   const nextBoss = hasNext ? gameData.bosses[bossIndex + 1] : null;
+  const surrendered = battle.log.some((entry) => entry.type === "system" && entry.text.startsWith("🏳️"));
   const title = draw ? "무승부" : won ? "승리!" : "패배…";
   const subtitle = draw ? "12턴의 사투 끝에 승부를 가리지 못했다"
-    : won ? `${boss.title} ${boss.name} 격파` : `${boss.name}의 승리`;
+    : won ? `${boss.title} ${boss.name} 격파`
+    : surrendered ? `${battle.turn}턴에 항복 — 다음엔 이긴다` : `${boss.name}의 승리`;
   const lastNarration = [...battle.log].reverse().find((entry) => entry.type === "narration")?.text ?? "";
   const outcome = draw ? "draw" : won ? "win" : "lose";
   document.querySelector("#result-content").innerHTML = `
