@@ -104,9 +104,9 @@ function loadSettings() {
 
 async function requestOnce(url, payload) {
   const controller = new AbortController();
-  // 추론 모델 판정은 10초를 넘기기도 한다. 8초로 잘랐더니 진짜 판정이
-  // 오는 중에도 약식으로 떨어져 버려서, 넉넉히 기다린다.
-  const timer = setTimeout(() => controller.abort(), 25_000);
+  // 추론 모델 판정은 혼잡할 때 25초를 넘기기도 한다. 시간이 걸려도 진짜 판정이
+  // 약식보다 낫다. 재시도 없이 한 번을 길게 기다린다.
+  const timer = setTimeout(() => controller.abort(), 40_000);
   try {
     const response = await fetch(`${url.replace(/\/$/, "")}/judge`, {
       method: "POST",
@@ -124,12 +124,11 @@ async function requestOnce(url, payload) {
 export async function requestJudgment(payload, settings = loadSettings()) {
   if (settings.offline) return fallbackJudgment(payload);
 
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      return await requestOnce(settings.judgeUrl || DEFAULT_JUDGE_URL, payload);
-    } catch {
-      // 한 번 재시도한 뒤에도 실패하면 게임 흐름을 약식 판정으로 이어 간다.
-    }
+  try {
+    return await requestOnce(settings.judgeUrl || DEFAULT_JUDGE_URL, payload);
+  } catch {
+    // 실패하면 게임 흐름을 약식 판정으로 이어 간다. 40초를 기다려 준 뒤이므로
+    // 다시 40초를 태우는 재시도는 하지 않는다.
+    return fallbackJudgment(payload);
   }
-  return fallbackJudgment(payload);
 }
