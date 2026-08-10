@@ -24,11 +24,16 @@ export function setMotionListener(fn) { onMotion = fn; }
 
 // 현재 무대 상태. 필드 배경이 제대로 적용됐는지 확인할 때 쓴다.
 export function stageState() {
+  let bossColor = null;
+  actors?.p2?.root.traverse((node) => {
+    if (!bossColor && node.isMesh && node.material?.color) bossColor = "#" + node.material.color.getHexString();
+  });
   return scene ? {
     background: "#" + scene.background.getHexString(),
     floor: "#" + floorMesh.material.color.getHexString(),
     motes: motes ? moteCount : 0,
     rain: Boolean(moteFall),
+    bossColor,
   } : null;
 }
 
@@ -490,6 +495,14 @@ export function init(target) {
 
 export function setActors() {}
 export function setPhase(nextPhase) { phase = nextPhase; }
+
+// 보스의 몸 색을 그 보스의 색으로 물들인다. 무지개 보스는 색이 곧 정체성이다.
+export function setBossColor(hex) {
+  if (!actors?.p2 || hex == null) return;
+  actors.p2.root.traverse((node) => {
+    if (node.isMesh && node.material?.color) node.material.color.setHex(hex);
+  });
+}
 
 // 필드가 바뀌면 배경·안개·바닥·조명 색과 떠다니는 입자를 그 필드 분위기로 갈아끼운다.
 export function setField(field) {

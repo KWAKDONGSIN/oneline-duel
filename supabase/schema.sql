@@ -83,13 +83,15 @@ begin
     raise exception '로그인이 필요합니다.';
   end if;
 
-  -- 보스 난이도별 고정 점수
+  -- 무지개 7색 보스, 색 순서대로 점수가 오른다
   v_points := case p_boss_id
-    when 1 then 10   -- 짚단
-    when 2 then 20   -- 벽염
-    when 3 then 30   -- 로가
-    when 4 then 40   -- 팽
-    when 5 then 60   -- 묵혼
+    when 1 then 10   -- 빨강 홍옥 (사과)
+    when 2 then 15   -- 주황 호걸 (호랑이)
+    when 3 then 20   -- 노랑 미끌 (바나나)
+    when 4 then 25   -- 초록 브록 장군 (브로콜리)
+    when 5 then 30   -- 파랑 해일 (파도)
+    when 6 then 40   -- 남색 미리내 (밤하늘)
+    when 7 then 60   -- 보라 포도대왕 (최종)
     else 0
   end;
 

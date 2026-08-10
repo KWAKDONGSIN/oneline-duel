@@ -61,12 +61,36 @@
     </section>
   </main>
 
+  <div id="difficulty-modal" class="modal" hidden></div>
   <div id="tutorial-modal" class="modal" hidden></div>
   <div id="settings-modal" class="modal" hidden></div>
   <div id="login-modal" class="modal" hidden></div>
   <div id="nickname-modal" class="modal" hidden></div>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-  <script type="module" src="./js/main.js"></script>
+  <script type="module">
+    // 배포 직후에는 브라우저 캐시에 옛 파일과 새 파일이 섞여 모듈 로딩이 통째로
+    // 실패할 수 있다. 그러면 화면은 멀쩡해 보여도 모든 버튼이 죽는다.
+    // 그때는 게임 파일을 강제로 다시 받아 캐시를 갈아 끼운 뒤 한 번만 새로고침한다.
+    import("./js/main.js")
+      .then(() => sessionStorage.removeItem("old:self-heal"))
+      .catch(async () => {
+        if (sessionStorage.getItem("old:self-heal")) {
+          document.querySelector("#home-content").innerHTML =
+            '<p class="error panel">게임을 불러오지 못했습니다. 잠시 후 새로고침해 주세요.</p>';
+          return;
+        }
+        sessionStorage.setItem("old:self-heal", "1");
+        const files = [
+          "js/main.js", "js/battle.js", "js/boss.js", "js/character.js", "js/judge.js",
+          "js/storage.js", "js/render3d.js", "js/audio.js", "js/multiplayer.js",
+          "js/auth.js", "js/account.js", "js/supabase-config.js",
+          "libs/three.module.js", "libs/three.core.js",
+          "data/bosses.json", "data/fields.json",
+        ];
+        await Promise.allSettled(files.map((file) => fetch("./" + file, { cache: "reload" })));
+        location.reload();
+      });
+  </script>
 </body>
 </html>

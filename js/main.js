@@ -9,7 +9,7 @@ import {
   resolveTurn,
   validateInput,
 } from "./battle.js";
-import { pickSkill } from "./boss.js";
+import { DIFFICULTIES, applyDifficulty, pickSkill } from "./boss.js";
 import { CHARACTER_EXAMPLES, validate as validateCharacter } from "./character.js";
 import { requestJudgment } from "./judge.js";
 import {
@@ -63,6 +63,18 @@ let onlinePoll = null;
 let onlineRevision = 0;
 let onlineRenderKey = "";
 
+// 학교 컴퓨터처럼 WebGL이 막힌 기기에서도 게임은 계속되어야 한다.
+// 3D가 한 번이라도 실패하면 무대만 숨기고 텍스트로 승부를 이어간다.
+let stage3dOk = true;
+function disable3d() {
+  stage3dOk = false;
+  document.querySelectorAll(".stage").forEach((element) => { element.hidden = true; });
+}
+async function safe3d(run) {
+  if (!stage3dOk) return;
+  try { await run(); } catch { disable3d(); }
+}
+
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
@@ -113,7 +125,7 @@ function renderHome() {
         : `<p>아직 캐릭터가 없습니다. 한 줄로 당신을 만들어 보세요.</p>`}
     </article>
     <div id="rank-profile" class="rank-profile"><span class="tier-badge">실버</span><strong>1000점</strong><small>랭크 기록을 불러오는 중…</small></div>
-    <p class="progress">격파 ${saved.progress.beatenBossIds.length} / 5</p>
+    <p class="progress">격파 ${saved.progress.beatenBossIds.length} / ${gameData?.bosses.length ?? 7} · 🌈 일곱 색을 모두 꺾어라</p>
     <div class="home-actions">
       <button class="button primary" data-action="challenge">보스 도전</button>
       <button class="button ranked-button" data-action="ranked" disabled>랭크전</button>
@@ -133,7 +145,7 @@ function renderHome() {
 
   document.querySelector('[data-action="edit"]')?.addEventListener("click", () => openCharacterForm(character));
   document.querySelector('[data-action="challenge"]').addEventListener("click", () => {
-    if (character) startBattle(character);
+    if (character) openDifficultySelect(character);
     else openCharacterForm();
   });
   document.querySelector('[data-action="ranked"]').addEventListener("click", () => startOnlineMatch("ranked"));
@@ -301,10 +313,40 @@ function nextBossIndex() {
   return index < 0 ? gameData.bosses.length - 1 : index;
 }
 
+// 보스에 들어가기 전에 난이도를 고른다. 고른 난이도는 재도전·다음 보스에도 그대로 이어진다.
+let currentDifficulty = "normal";
+
+function openDifficultySelect(character, index = nextBossIndex()) {
+  const target = gameData.bosses[Math.max(0, Math.min(gameData.bosses.length - 1, index))];
+  const modal = document.querySelector("#difficulty-modal");
+  modal.hidden = false;
+  modal.innerHTML = `
+    <div class="modal-card difficulty-card">
+      <h3>난이도 선택</h3>
+      <p class="difficulty-target">다음 상대 — <strong style="color:${escapeHtml(target.color)}">${escapeHtml(target.emoji)} ${escapeHtml(target.name)}</strong> <small>${escapeHtml(target.title)}</small></p>
+      <div class="difficulty-list">
+        ${Object.values(DIFFICULTIES).map((d) => `
+          <button class="button difficulty-option ${d.key === currentDifficulty ? "primary" : ""}" data-difficulty="${d.key}">
+            <strong>${d.label}</strong><small>${d.desc}</small>
+          </button>`).join("")}
+      </div>
+      <button class="button" id="difficulty-cancel">돌아가기</button>
+    </div>`;
+  modal.querySelectorAll("[data-difficulty]").forEach((button) => {
+    button.addEventListener("click", () => {
+      currentDifficulty = button.dataset.difficulty;
+      modal.hidden = true;
+      playSfx("click");
+      startBattle(character, index);
+    });
+  });
+  modal.querySelector("#difficulty-cancel").addEventListener("click", () => { modal.hidden = true; });
+}
+
 function startBattle(character, index = nextBossIndex()) {
   bossIndex = Math.max(0, Math.min(gameData.bosses.length - 1, index));
   boss = gameData.bosses[bossIndex];
-  battle = createBattle("boss", character, boss, undefined, gameData.fields);
+  battle = createBattle("boss", character, applyDifficulty(boss, currentDifficulty), undefined, gameData.fields);
   fallbackNoticeShown = false;
   navigate("battle");
   beginBattleTurn();
@@ -386,12 +428,20 @@ function renderBattle() {
     }
   });
   document.querySelector("#skill-form").addEventListener("submit", submitSkill);
-  render3d.init(document.querySelector("#stage"));
-  render3d.setField(battle.field);
+  safe3d(() => {
+    render3d.init(document.querySelector("#stage"));
+    render3d.setField(battle.field);
+    render3d.setBossColor(bossColorHex(boss));
+    render3d.setPhase("typing");
+    render3d.setWounds("p1", p1.wounds);
+    render3d.setWounds("p2", p2.wounds);
+  });
   playFieldMusic(battle.field?.id);   // 필드가 바뀌면 그 필드의 음악으로 갈아탄다
-  render3d.setPhase("typing");
-  render3d.setWounds("p1", p1.wounds);
-  render3d.setWounds("p2", p2.wounds);
+}
+
+// "#ff3b30" 같은 색 문자열을 three.js가 먹는 숫자로 바꾼다.
+function bossColorHex(definition) {
+  return definition?.color ? parseInt(definition.color.replace("#", ""), 16) : null;
 }
 
 async function submitSkill(event) {
@@ -407,7 +457,7 @@ async function submitSkill(event) {
     document.querySelector("#skill-submit").disabled = true;
     resolveRainbow(battle, "p1");
     playSfx("rainbow");
-    await render3d.rainbowReflect("p1");
+    await safe3d(() => render3d.rainbowReflect("p1"));
     renderResult();
     return;
   }
@@ -433,7 +483,7 @@ async function submitSkill(event) {
     showToast("판정 서버에 연결할 수 없어 약식 판정으로 진행합니다. 설정에서 서버 주소를 확인하세요.");
   }
   resolveTurn(battle, judgment);
-  await render3d.playTurn(judgment.motions, judgment.effects);
+  await safe3d(() => render3d.playTurn(judgment.motions, judgment.effects));
 
   if (battle.phase === "over") renderResult();
   else beginBattleTurn();
@@ -511,9 +561,9 @@ async function handleOnlineState(state) {
     onlineRevision = state.revision;
     if (state.lastTurn.rainbow) {
       playSfx("rainbow");
-      await render3d.rainbowReflect(state.lastTurn.rainbow);
+      await safe3d(() => render3d.rainbowReflect(state.lastTurn.rainbow));
     } else {
-      await render3d.playTurn(state.lastTurn.judgment.motions, state.lastTurn.judgment.effects);
+      await safe3d(() => render3d.playTurn(state.lastTurn.judgment.motions, state.lastTurn.judgment.effects));
     }
   }
   if (state.battle.phase === "over") renderOnlineResult(state);
@@ -551,12 +601,14 @@ function renderOnlineBattle(state) {
       <div class="skill-meta"><span id="online-skill-count">0자 / 기력 ${me.energy}</span><span id="online-skill-error" class="error"></span></div>`}
     </div>`;
 
-  render3d.init(document.querySelector("#stage"));
-  render3d.setField(state.battle.field);
+  safe3d(() => {
+    render3d.init(document.querySelector("#stage"));
+    render3d.setField(state.battle.field);
+    render3d.setPhase(state.submitted ? "resolving" : "typing");
+    render3d.setWounds("p1", state.battle.p1.wounds);
+    render3d.setWounds("p2", state.battle.p2.wounds);
+  });
   playFieldMusic(state.battle.field?.id);
-  render3d.setPhase(state.submitted ? "resolving" : "typing");
-  render3d.setWounds("p1", state.battle.p1.wounds);
-  render3d.setWounds("p2", state.battle.p2.wounds);
   const log = document.querySelector("#battle-log");
   log.scrollTop = log.scrollHeight;
   if (state.submitted) return;
@@ -589,7 +641,7 @@ function renderOnlineResult(state) {
   const draw = state.battle.winner === "draw";
   const delta = state.ratingChange;
   navigate("result");
-  render3d.finish(state.battle.winner);
+  safe3d(() => render3d.finish(state.battle.winner));
   document.querySelector("#result-content").innerHTML = `
     <div class="result-card online-result">
       <p class="result-kicker">${state.mode === "ranked" ? "랭크전" : "일반전"}</p>
@@ -636,7 +688,7 @@ function renderResult() {
       <div class="highlight"><small>이 판의 명장면</small><p>${escapeHtml(lastNarration)}</p></div>
       <div class="result-actions">
         ${hasNext ? `<button class="button primary" data-action="next-boss">다음 보스 — ${escapeHtml(nextBoss.emoji)} ${escapeHtml(nextBoss.name)}</button>` : ""}
-        ${won && !hasNext ? `<p class="all-clear">모든 보스를 격파했습니다!</p>` : ""}
+        ${won && !hasNext ? `<p class="all-clear">🌈 일곱 색을 모두 꺾었습니다! 무지개는 당신의 것입니다.</p>` : ""}
         <button class="button ${hasNext ? "" : "primary"}" data-action="retry">다시 도전</button>
         <button class="button" data-action="home">홈으로</button>
         <button class="button" data-action="copy">로그 복사</button>
@@ -663,6 +715,14 @@ async function loadGameData() {
     const bosses = await bossesResponse.json();
     const fields = await fieldsResponse.json();
     gameData = { bosses: bosses.bosses, fields: fields.fields };
+    // 보스 목록이 무지개 7색으로 바뀌었다. 옛 5보스 시절의 격파 기록은 번호가 다른
+    // 보스를 가리키므로, 한 번만 비우고 새 여정을 시작하게 한다.
+    const saved = loadData();
+    if (saved.progress.bossSet !== "rainbow") {
+      saved.progress.bossSet = "rainbow";
+      saved.progress.beatenBossIds = [];
+      saveData(saved);
+    }
     renderHome();
   } catch {
     document.querySelector("#home-content").innerHTML = `<p class="error panel">게임 데이터를 불러오지 못했습니다. 로컬 서버로 실행해 주세요 (npx serve)</p>`;
