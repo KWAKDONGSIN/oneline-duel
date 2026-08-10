@@ -77,3 +77,77 @@ test("모든 보스가 어떤 상태에서든 기술을 낼 수 있다", () => {
     assert.ok(pickSkill(boss, enragedState, () => 0.5).skill.enraged, `${boss.name} 발악 턴에 분노기가 안 나온다`);
   }
 });
+
+// ── 보스 고유 기믹 ─────────────────────────────────────────────
+const { applyTurnGimmick, applyWoundGimmick } = await import("../js/boss.js");
+const { createBattle } = await import("../js/battle.js");
+
+function bossBattle(bossId, turn = 3) {
+  const boss = bosses.find((candidate) => candidate.id === bossId);
+  const battle = createBattle("boss", { name: "나", trait: "평범", endurance: 3 }, boss, 1, []);
+  battle.turn = turn;
+  return { boss, battle };
+}
+
+test("모든 보스가 기믹을 하나씩 가진다", () => {
+  for (const boss of bosses) {
+    assert.ok(boss.gimmick?.type && boss.gimmick?.label && boss.gimmick?.text, boss.name);
+  }
+});
+
+test("홍옥: 3턴마다 제풀에 넘어진다", () => {
+  const { boss, battle } = bossBattle(1, 3);
+  assert.equal(applyTurnGimmick(boss, battle)?.stumble, true);
+  battle.turn = 4;
+  assert.equal(applyTurnGimmick(boss, battle), null);
+});
+
+test("호걸: 포효가 상대 기력을 10 깎는다", () => {
+  const { boss, battle } = bossBattle(2, 3);
+  applyTurnGimmick(boss, battle);
+  assert.equal(battle.p1.energy, 50);
+});
+
+test("미끌: 짝수 턴마다 글자 제한 45", () => {
+  const { boss, battle } = bossBattle(3, 4);
+  applyTurnGimmick(boss, battle);
+  assert.equal(battle.turnLimit, 45);
+});
+
+test("브록 장군: 3턴마다 상처 하나 회복 (0이면 발동 안 함)", () => {
+  const { boss, battle } = bossBattle(4, 3);
+  battle.p2.wounds = 2;
+  applyTurnGimmick(boss, battle);
+  assert.equal(battle.p2.wounds, 1);
+  battle.p2.wounds = 0;
+  assert.equal(applyTurnGimmick(boss, battle), null);
+});
+
+test("해일: 3턴마다 보호막을 다시 두른다", () => {
+  const { boss, battle } = bossBattle(5, 3);
+  battle.p2.statuses = [];
+  applyTurnGimmick(boss, battle);
+  assert.ok(battle.p2.statuses.includes("보호막"));
+});
+
+test("미리내: 4턴마다 상대를 혼란시킨다", () => {
+  const { boss, battle } = bossBattle(6, 4);
+  applyTurnGimmick(boss, battle);
+  assert.ok(battle.p1.statuses.includes("혼란"));
+});
+
+test("포도대왕: 알이 터질 때마다 기력 +15", () => {
+  const { boss, battle } = bossBattle(7, 5);
+  battle.p2.energy = 50;
+  applyWoundGimmick(boss, battle, 2);
+  assert.equal(battle.p2.energy, 80);
+  assert.equal(applyWoundGimmick(boss, battle, 0), null);
+});
+
+test("기믹은 1턴에는 발동하지 않는다", () => {
+  for (const boss of bosses) {
+    const { battle } = bossBattle(boss.id, 1);
+    battle.turn = 1;
+    assert.equal(applyTurnGimmick(boss, battle), null, boss.name);
+  }
+});

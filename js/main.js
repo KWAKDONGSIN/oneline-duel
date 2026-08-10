@@ -9,7 +9,7 @@ import {
   resolveTurn,
   validateInput,
 } from "./battle.js";
-import { DIFFICULTIES, applyDifficulty, pickSkill } from "./boss.js";
+import { DIFFICULTIES, applyDifficulty, applyTurnGimmick, applyWoundGimmick, pickSkill } from "./boss.js";
 import { CHARACTER_EXAMPLES, validate as validateCharacter } from "./character.js";
 import { requestJudgment } from "./judge.js";
 import {
@@ -22,8 +22,10 @@ import {
 } from "./multiplayer.js";
 import * as render3d from "./render3d.js";
 import {
+  bossMusicList,
   fieldMusicList,
   initAudio,
+  playBossMusic,
   playFieldMusic,
   playSfx,
   playTitleMusic,
@@ -134,10 +136,11 @@ function renderHome() {
       <button class="button" data-action="settings">설정</button>
     </div>
     <section class="jukebox panel">
-      <h3>필드 음악 감상</h3>
-      <p>전투 중 필드가 바뀌면 이 음악들이 흐릅니다. 눌러서 들어보세요.</p>
+      <h3>음악 감상실</h3>
+      <p>보스전에는 보스 테마가, 온라인전에는 필드 음악이 흐릅니다. 눌러서 들어보세요.</p>
       <div class="jukebox-grid">
         <button data-track="title">🌈 메인 테마</button>
+        ${bossMusicList().map((b) => `<button data-track="boss-${b.id}">${escapeHtml(b.name)}</button>`).join("")}
         ${fieldMusicList().map((f) => `<button data-track="${f.id}">${escapeHtml(f.name)}</button>`).join("")}
         <button data-track="stop">⏹ 정지</button>
       </div>
@@ -158,6 +161,7 @@ function renderHome() {
       startAudioOnce();
       if (track === "stop") stopMusic();
       else if (track === "title") playTitleMusic();
+      else if (track.startsWith("boss-")) playBossMusic(Number(track.slice(5)));
       else playFieldMusic(Number(track));
       document.querySelectorAll("[data-track]").forEach((b) => b.classList.remove("playing"));
       if (track !== "stop") button.classList.add("playing");
@@ -370,9 +374,18 @@ function recordBossVictory() {
 
 function beginBattleTurn() {
   beginTurn(battle);
-  const picked = pickSkill(boss, battle.p2);
-  bossSkill = picked.skill;
-  battle.log.push({ type: "tease", who: "p2", text: `⚠️ ${picked.tease}` });
+  battle.turnLimit = null;   // 미끌의 껍질 함정 같은 한 턴짜리 제한을 매 턴 초기화
+  const gimmick = applyTurnGimmick(boss, battle);
+  if (gimmick) battle.log.push({ type: "system", who: "p2", text: gimmick.text });
+  if (gimmick?.stumble) {
+    // 홍옥이 제풀에 넘어진 턴에는 공격 대신 허둥거린다
+    bossSkill = { text: "넘어진 채 데굴데굴 허둥댄다", element: "earth", enraged: false };
+    battle.log.push({ type: "tease", who: "p2", text: "⚠️ 홍옥이 바닥에서 버둥거리고 있다…!" });
+  } else {
+    const picked = pickSkill(boss, battle.p2);
+    bossSkill = picked.skill;
+    battle.log.push({ type: "tease", who: "p2", text: `⚠️ ${picked.tease}` });
+  }
   renderBattle();
   document.querySelector("#skill-input")?.focus();
 }
@@ -381,7 +394,7 @@ function renderBattle() {
   const p1 = battle.p1;
   const p2 = battle.p2;
   const isLastStand = p1.lastStandActive;
-  const maxLength = isLastStand ? 100 : p1.statuses.includes("혼란") ? 30 : 60;
+  const maxLength = isLastStand ? 100 : p1.statuses.includes("혼란") ? 30 : (battle.turnLimit ?? 60);
   document.querySelector("#battle-content").innerHTML = `
     <div class="fighter-bar opponent">
       <div><strong>${escapeHtml(boss.emoji)} ${escapeHtml(p2.name)}</strong><small>${escapeHtml(boss.title)}</small></div>
@@ -431,12 +444,12 @@ function renderBattle() {
   safe3d(() => {
     render3d.init(document.querySelector("#stage"));
     render3d.setField(battle.field);
-    render3d.setBossColor(bossColorHex(boss));
+    render3d.setBossShape(boss.id, bossColorHex(boss));   // 보스 생김새 그대로, 그 보스의 색으로
     render3d.setPhase("typing");
     render3d.setWounds("p1", p1.wounds);
     render3d.setWounds("p2", p2.wounds);
   });
-  playFieldMusic(battle.field?.id);   // 필드가 바뀌면 그 필드의 음악으로 갈아탄다
+  playBossMusic(boss.id);   // 보스전에는 필드와 무관하게 그 보스의 테마곡이 흐른다
 }
 
 // "#ff3b30" 같은 색 문자열을 three.js가 먹는 숫자로 바꾼다.
@@ -482,7 +495,11 @@ async function submitSkill(event) {
     fallbackNoticeShown = true;
     showToast("판정 서버에 연결할 수 없어 약식 판정으로 진행합니다. 설정에서 서버 주소를 확인하세요.");
   }
+  const bossWoundsBefore = battle.p2.wounds;
   resolveTurn(battle, judgment);
+  // 포도대왕의 알알이 진노: 알이 터질 때마다 기력이 차오른다
+  const rage = applyWoundGimmick(boss, battle, battle.p2.wounds - bossWoundsBefore);
+  if (rage) battle.log.push({ type: "system", who: "p2", text: rage.text });
   await safe3d(() => render3d.playTurn(judgment.motions, judgment.effects));
 
   if (battle.phase === "over") renderResult();
@@ -604,6 +621,7 @@ function renderOnlineBattle(state) {
   safe3d(() => {
     render3d.init(document.querySelector("#stage"));
     render3d.setField(state.battle.field);
+    render3d.setBossShape(null, null);   // 온라인 상대는 사람이다. 사람형으로 되돌린다
     render3d.setPhase(state.submitted ? "resolving" : "typing");
     render3d.setWounds("p1", state.battle.p1.wounds);
     render3d.setWounds("p2", state.battle.p2.wounds);

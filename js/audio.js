@@ -248,6 +248,55 @@ const FIELD_MUSIC = {
         noise: { type: "lowpass", freq: 900, level: 0.09 } },
 };
 
+// 보스 테마 7곡. 필드 음악과 달리 보스전 내내 그 보스의 곡이 흐른다.
+// 색과 성격이 그대로 소리가 되도록 곡마다 캐릭터를 다르게 잡았다.
+const BOSS_MUSIC = {
+  1: { name: "🍎 홍옥 — 풋풋한 첫 승부", bpm: 138, lead: "square", bassWave: "triangle",
+       // 통통 튀는 씩씩한 신입의 행진
+       bass: [N.C3, N.G3, N.C3, N.G3, N.F3, N.C3, N.G3, N.G3],
+       melody: [N.C5, _, N.E5, N.G5, N.E5, _, N.C5, _, N.D5, N.E5, N.D5, N.C5, N.E5, _, N.G4, _],
+       noise: null },
+  2: { name: "🐯 호걸 — 산군의 행차", bpm: 144, lead: "square", bassWave: "square",
+       // 낮게 울리는 베이스가 호랑이 걸음, 멜로디는 포효처럼 치솟는다
+       bass: [N.G3, N.G3, N.G3, N.D3, N.G3, N.G3, N.B3, N.D3],
+       melody: [N.G4, N.B4, N.D5, N.G5, _, N.D5, N.B4, _, N.A4, N.B4, N.D5, N.E5, N.D5, _, N.G4, _],
+       noise: { type: "lowpass", freq: 250, level: 0.06 } },
+  3: { name: "🍌 미끌 — 능글 스윙", bpm: 128, lead: "triangle", bassWave: "sine",
+       // 미끄러지듯 어긋나는 박자, 능청스러운 셋잇단 느낌
+       bass: [N.F3, _, N.C4, N.F3, N.A3, _, N.C4, N.A3],
+       melody: [N.A4, N.C5, _, N.A4, N.F5, _, N.D5, N.C5, _, N.D5, N.F5, N.D5, _, N.C5, N.A4, _],
+       noise: null },
+  4: { name: "🥦 브록 장군 — 채소 행진곡", bpm: 120, lead: "square", bassWave: "square",
+       // 군가처럼 반듯한 네 박자 행진
+       bass: [N.C3, N.C3, N.G3, N.G3, N.C3, N.C3, N.F3, N.G3],
+       melody: [N.C5, N.C5, N.G4, N.C5, N.E5, N.E5, N.D5, _, N.E5, N.F5, N.E5, N.D5, N.C5, _, N.G4, _],
+       noise: null },
+  5: { name: "🌊 해일 — 밀려오는 푸른 벽", bpm: 100, lead: "sine", bassWave: "sine",
+       // 느리게 밀려왔다 물러나는 파도의 호흡
+       bass: [N.D3, N.A3, N.D4, N.A3, N.G3, N.D4, N.A3, N.G3],
+       melody: [N.D5, N.E5, N.G5, N.A5, N.G5, N.E5, N.D5, _, N.E5, N.G5, N.E5, N.D5, N.B4, _, N.D5, _],
+       noise: { type: "lowpass", freq: 500, level: 0.12 } },
+  6: { name: "🌌 미리내 — 별의 강", bpm: 108, lead: "sine", bassWave: "sine",
+       // 높은 음이 별처럼 드문드문 반짝인다
+       bass: [N.A3, _, N.E3, _, N.D3, _, N.E3, _],
+       melody: [N.A5, _, N.E5, _, N.C6, _, N.A5, N.E5, _, N.D6, _, N.A5, _, N.E6, _, _],
+       noise: { type: "highpass", freq: 5000, level: 0.04 } },
+  7: { name: "🍇 포도대왕 — 왕의 위엄", bpm: 148, lead: "sawtooth", bassWave: "square",
+       // 최종 보스. 무겁게 몰아치는 저음 위로 왕관처럼 번쩍이는 선율
+       bass: [N.E3, N.E3, N.B3, N.E3, N.G3, N.G3, N.B3, N.E3],
+       melody: [N.E5, N.G5, N.B5, N.E5, N.G5, N.E5, N.B4, _, N.A5, N.G5, N.E5, N.G5, N.B5, _, N.E5, _],
+       noise: { type: "lowpass", freq: 300, level: 0.05 } },
+};
+
+export function bossMusicList() {
+  return Object.entries(BOSS_MUSIC).map(([id, m]) => ({ id: Number(id), name: m.name }));
+}
+
+export function playBossMusic(bossId) {
+  const spec = BOSS_MUSIC[bossId];
+  if (spec) startMusic(spec, `boss-${bossId}`);
+}
+
 // 메인 테마. 빛이 거울에 튕겨 되돌아오듯, 올라간 음이 그대로 되돌아오는 선율.
 const TITLE_MUSIC = {
   name: "무지개 반사", bpm: 150, lead: "square", bassWave: "triangle",

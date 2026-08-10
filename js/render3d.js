@@ -25,8 +25,14 @@ export function setMotionListener(fn) { onMotion = fn; }
 // 현재 무대 상태. 필드 배경이 제대로 적용됐는지 확인할 때 쓴다.
 export function stageState() {
   let bossColor = null;
+  let bossMeshes = 0;
+  const bossPalette = new Set();
   actors?.p2?.root.traverse((node) => {
-    if (!bossColor && node.isMesh && node.material?.color) bossColor = "#" + node.material.color.getHexString();
+    if (node.isMesh && node.material?.color) {
+      bossMeshes += 1;
+      bossPalette.add("#" + node.material.color.getHexString());
+      if (!bossColor) bossColor = "#" + node.material.color.getHexString();
+    }
   });
   return scene ? {
     background: "#" + scene.background.getHexString(),
@@ -34,6 +40,8 @@ export function stageState() {
     motes: motes ? moteCount : 0,
     rain: Boolean(moteFall),
     bossColor,
+    bossMeshes,
+    bossPalette: [...bossPalette],
   } : null;
 }
 
@@ -502,6 +510,190 @@ export function setBossColor(hex) {
   actors.p2.root.traverse((node) => {
     if (node.isMesh && node.material?.color) node.material.color.setHex(hex);
   });
+}
+
+// ── 무지개 보스 전용 몸체 ──────────────────────────────────────
+// 마네킹 대신 그 보스의 생김새를 도형으로 빚는다. 관절 이름(root/torso/head/armL…)은
+// 사람형과 똑같이 유지해서, 기존 전투 모션이 어떤 몸에서도 그대로 재생된다.
+
+function std(color, options = {}) {
+  return new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.12, ...options });
+}
+
+function put(parent, geometry, material, x = 0, y = 0, z = 0) {
+  const node = new THREE.Mesh(geometry, material);
+  node.position.set(x, y, z);
+  parent.add(node);
+  return node;
+}
+
+// 공통 골격: 비어 있는 관절 그룹을 만들고, 각 빌더가 그 안에 살을 붙인다.
+function bossSkeleton() {
+  const root = new THREE.Group();
+  const torso = new THREE.Group();
+  root.add(torso);
+  const joints = { root, torso, head: new THREE.Group() };
+  joints.head.position.y = 2.35;
+  torso.add(joints.head);
+  for (const [name, x, y] of [["armL", -0.55, 1.7], ["armR", 0.55, 1.7], ["legL", -0.2, 1.0], ["legR", 0.2, 1.0]]) {
+    const joint = new THREE.Group();
+    joint.position.set(x, y, 0);
+    torso.add(joint);
+    joints[name] = joint;
+  }
+  return joints;
+}
+
+const BOSS_BUILDERS = {
+  1(hex) {   // 🍎 홍옥 — 커다란 사과. 꼭지와 잎이 머리, 짧은 팔다리로 buzzing
+    const joints = bossSkeleton();
+    const apple = std(hex);
+    const body = put(joints.torso, new THREE.SphereGeometry(0.72, 20, 16), apple, 0, 1.25, 0);
+    body.scale.y = 0.92;
+    joints.head.position.y = 2.0;
+    put(joints.head, new THREE.CylinderGeometry(0.05, 0.08, 0.3, 8), std(0x6b4423), 0, 0.15, 0);
+    const leaf = put(joints.head, new THREE.SphereGeometry(0.16, 10, 8), std(0x34c759), 0.18, 0.28, 0);
+    leaf.scale.set(1.4, 0.5, 0.7);
+    for (const side of [joints.armL, joints.armR]) put(side, new THREE.SphereGeometry(0.13, 10, 8), apple, 0, -0.05, 0);
+    for (const side of [joints.legL, joints.legR]) put(side, new THREE.CapsuleGeometry(0.09, 0.2, 4, 8), apple, 0, -0.2, 0);
+    return joints;
+  },
+  2(hex) {   // 🐯 호걸 — 줄무늬와 귀, 꼬리가 있는 호랑이
+    const joints = bossSkeleton();
+    const fur = std(hex);
+    const dark = std(0x2c1a0e);
+    put(joints.torso, new THREE.CapsuleGeometry(0.34, 0.7, 6, 12), fur, 0, 1.5, 0);
+    for (const y of [1.3, 1.55, 1.8]) {
+      const stripe = put(joints.torso, new THREE.TorusGeometry(0.35, 0.035, 6, 16), dark, 0, y, 0);
+      stripe.rotation.x = Math.PI / 2;
+    }
+    put(joints.head, new THREE.SphereGeometry(0.32, 16, 12), fur, 0, 0, 0);
+    put(joints.head, new THREE.SphereGeometry(0.15, 10, 8), std(0xfff2e0), 0, -0.08, 0.24);
+    for (const x of [-0.2, 0.2]) put(joints.head, new THREE.ConeGeometry(0.1, 0.18, 6), dark, x, 0.3, 0);
+    for (const side of [joints.armL, joints.armR]) {
+      put(side, new THREE.CapsuleGeometry(0.1, 0.45, 4, 8), fur, 0, -0.25, 0);
+      put(side, new THREE.SphereGeometry(0.12, 8, 6), dark, 0, -0.55, 0);
+    }
+    for (const side of [joints.legL, joints.legR]) put(side, new THREE.CapsuleGeometry(0.12, 0.6, 4, 8), fur, 0, -0.35, 0);
+    const tail = put(joints.torso, new THREE.CapsuleGeometry(0.06, 0.7, 4, 8), fur, -0.35, 1.35, -0.25);
+    tail.rotation.z = 1.0;
+    return joints;
+  },
+  3(hex) {   // 🍌 미끌 — 초승달처럼 휜 바나나
+    const joints = bossSkeleton();
+    const peel = std(hex);
+    const segments = [[-0.28, 1.1, -0.5], [-0.1, 1.5, -0.25], [0.05, 1.85, 0.05], [0.12, 2.15, 0.35]];
+    for (const [x, y, tilt] of segments) {
+      const piece = put(joints.torso, new THREE.CapsuleGeometry(0.2, 0.34, 6, 10), peel, x, y, 0);
+      piece.rotation.z = tilt;
+    }
+    joints.head.position.set(0.16, 2.4, 0);
+    put(joints.head, new THREE.CylinderGeometry(0.07, 0.1, 0.18, 8), std(0x6b4423), 0, 0, 0);
+    for (const side of [joints.armL, joints.armR]) put(side, new THREE.CapsuleGeometry(0.08, 0.3, 4, 8), peel, 0, -0.18, 0);
+    for (const side of [joints.legL, joints.legR]) put(side, new THREE.SphereGeometry(0.1, 8, 6), std(0x6b4423), 0, -0.15, 0);
+    return joints;
+  },
+  4(hex) {   // 🥦 브록 장군 — 줄기 위에 꽃송이 구름
+    const joints = bossSkeleton();
+    const stalk = std(0x9adf78);
+    const crown = std(hex);
+    put(joints.torso, new THREE.CylinderGeometry(0.22, 0.34, 1.1, 10), stalk, 0, 1.35, 0);
+    joints.head.position.y = 2.25;
+    put(joints.head, new THREE.SphereGeometry(0.42, 14, 10), crown, 0, 0, 0);
+    for (const [x, y, z] of [[-0.35, 0.12, 0.1], [0.35, 0.1, -0.1], [0, 0.3, 0.28], [-0.15, 0.28, -0.28], [0.2, 0.32, 0.15]]) {
+      put(joints.head, new THREE.SphereGeometry(0.24, 10, 8), crown, x, y, z);
+    }
+    for (const side of [joints.armL, joints.armR]) put(side, new THREE.CapsuleGeometry(0.08, 0.4, 4, 8), stalk, 0, -0.22, 0);
+    for (const side of [joints.legL, joints.legR]) put(side, new THREE.CapsuleGeometry(0.1, 0.4, 4, 8), stalk, 0, -0.25, 0);
+    return joints;
+  },
+  5(hex) {   // 🌊 해일 — 반투명한 물의 파도, 꼭대기에 흰 물거품
+    const joints = bossSkeleton();
+    const water = std(hex, { transparent: true, opacity: 0.72, roughness: 0.2 });
+    const foam = std(0xeaf8ff, { transparent: true, opacity: 0.9 });
+    const body = put(joints.torso, new THREE.SphereGeometry(0.62, 18, 14), water, 0, 1.3, 0);
+    body.scale.set(0.85, 1.5, 0.85);
+    const base = put(joints.torso, new THREE.CylinderGeometry(0.85, 1.0, 0.22, 16), water, 0, 0.12, 0);
+    base.material = water;
+    joints.head.position.y = 2.3;
+    for (const [x, z, r] of [[0, 0, 0.2], [-0.22, 0.1, 0.14], [0.2, -0.08, 0.15], [0.05, 0.2, 0.11]]) {
+      put(joints.head, new THREE.SphereGeometry(r, 10, 8), foam, x, 0.05, z);
+    }
+    for (const side of [joints.armL, joints.armR]) put(side, new THREE.CapsuleGeometry(0.1, 0.5, 4, 8), water, 0, -0.28, 0);
+    return joints;   // 다리는 없다. 파도는 걷지 않는다
+  },
+  6(hex) {   // 🌌 미리내 — 어두운 밤의 장막에 별이 박혀 있다
+    const joints = bossSkeleton();
+    const night = std(hex, { transparent: true, opacity: 0.85, roughness: 0.8 });
+    const star = new THREE.MeshBasicMaterial({ color: 0xfff7cf });
+    const cloak = put(joints.torso, new THREE.ConeGeometry(0.62, 1.9, 12), night, 0, 1.15, 0);
+    cloak.scale.z = 0.8;
+    put(joints.head, new THREE.SphereGeometry(0.3, 16, 12), night, 0, 0, 0);
+    for (const [x, y, z, r] of [[-0.3, 1.0, 0.35, 0.045], [0.25, 1.5, 0.4, 0.06], [-0.15, 1.9, 0.42, 0.04], [0.35, 0.7, 0.3, 0.05], [0.05, 1.25, 0.48, 0.05]]) {
+      put(joints.torso, new THREE.SphereGeometry(r, 6, 5), star, x, y, z);
+    }
+    put(joints.head, new THREE.SphereGeometry(0.05, 6, 5), star, 0.15, 0.12, 0.24);
+    for (const side of [joints.armL, joints.armR]) put(side, new THREE.CapsuleGeometry(0.07, 0.45, 4, 8), night, 0, -0.25, 0);
+    return joints;
+  },
+  7(hex) {   // 🍇 포도대왕 — 포도알 무더기 위에 황금 왕관
+    const joints = bossSkeleton();
+    const grape = std(hex, { roughness: 0.35 });
+    const gold = std(0xf5c542, { metalness: 0.6, roughness: 0.3 });
+    const layers = [
+      [0.6, [[-0.3, 0, 0.18], [0.3, 0, 0.18], [0, 0, -0.3], [-0.28, 0, -0.2], [0.28, 0, -0.2]]],
+      [1.15, [[-0.25, 0, 0.2], [0.25, 0, 0.2], [0, 0, -0.25], [0, 0, 0.02]]],
+      [1.65, [[-0.18, 0, 0.1], [0.18, 0, 0.1], [0, 0, -0.15]]],
+    ];
+    for (const [y, spots] of layers) {
+      for (const [x, , z] of spots) put(joints.torso, new THREE.SphereGeometry(0.28, 12, 10), grape, x, y, z);
+    }
+    joints.head.position.y = 2.15;
+    put(joints.head, new THREE.SphereGeometry(0.3, 14, 10), grape, 0, 0, 0);
+    put(joints.head, new THREE.CylinderGeometry(0.22, 0.26, 0.16, 10), gold, 0, 0.32, 0);
+    for (const angle of [0, 1.26, 2.51, 3.77, 5.03]) {
+      put(joints.head, new THREE.ConeGeometry(0.05, 0.16, 4), gold, Math.cos(angle) * 0.2, 0.46, Math.sin(angle) * 0.2);
+    }
+    const leaf = put(joints.head, new THREE.SphereGeometry(0.14, 8, 6), std(0x34c759), -0.24, 0.2, 0);
+    leaf.scale.set(1.3, 0.4, 0.8);
+    for (const side of [joints.armL, joints.armR]) put(side, new THREE.CapsuleGeometry(0.09, 0.4, 4, 8), std(0x4b7a3a), 0, -0.22, 0);
+    for (const side of [joints.legL, joints.legR]) put(side, new THREE.SphereGeometry(0.12, 8, 6), grape, 0, -0.18, 0);
+    return joints;
+  },
+};
+
+let bossShapeKey = null;
+
+// p2 자리를 보스의 생김새로 갈아 끼운다. 모르는 보스나 온라인 상대(null)는 사람형으로 돌아간다.
+export function setBossShape(bossId, hex) {
+  if (!scene || !actors) return;
+  const key = BOSS_BUILDERS[bossId] ? `boss-${bossId}` : `human-${hex ?? "default"}`;
+  if (bossShapeKey === key) return;
+  bossShapeKey = key;
+
+  const wounds = actors.p2?.root.userData.wounds ?? 0;
+  if (actors.p2) {
+    scene.remove(actors.p2.root);
+    actors.p2.root.traverse((node) => {
+      if (node.isMesh) { node.geometry.dispose(); node.material.dispose(); }
+    });
+  }
+
+  if (BOSS_BUILDERS[bossId]) {
+    const joints = BOSS_BUILDERS[bossId](hex ?? COLORS.p2);
+    joints.root.position.set(1.65, 0, 0);
+    joints.root.rotation.y = -Math.PI / 2;
+    joints.root.userData.homeX = 1.65;
+    joints.root.userData.side = "p2";
+    joints.root.userData.wounds = wounds;
+    scene.add(joints.root);
+    actors.p2 = joints;
+  } else {
+    actors.p2 = makeActor("p2");
+    actors.p2.root.userData.wounds = wounds;
+    if (hex != null) setBossColor(hex);
+  }
+  resetPose(actors.p2);
 }
 
 // 필드가 바뀌면 배경·안개·바닥·조명 색과 떠다니는 입자를 그 필드 분위기로 갈아끼운다.

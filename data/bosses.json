@@ -1,110 +1,443 @@
 {
   "bosses": [
     {
-      "id": 1, "name": "홍옥", "emoji": "🍎", "title": "새빨간 첫 상대", "endurance": 2, "color": "#ff3b30",
+      "id": 1,
+      "name": "홍옥",
+      "emoji": "🍎",
+      "title": "새빨간 첫 상대",
+      "endurance": 2,
+      "color": "#ff3b30",
       "trait": "잘 익어 껍질이 반질반질해 웬만한 타격은 데굴데굴 굴러 흘려버리지만, 한 입이라도 베어 물리면 크게 동요한다",
       "personality": "갓 수확된 풋풋한 신입 보스. 씩씩한 존댓말을 쓰고 최선을 다하지만 어딘가 어설프다. 굴러다니는 것이 특기라 공격이 단순하고 정직하다.",
       "win_line": "이겼다! 저… 저도 이길 수 있군요! 다시 오세요!",
       "lose_line": "아삭… 훌륭한 한 입이었습니다. 다음 색이 기다려요.",
       "skills": [
-        { "text": "데굴데굴 굴러 몸통 박치기를 한다", "tease": "홍옥이 데굴데굴 구르기 시작한다", "element": "earth", "cost": 14, "enraged": false },
-        { "text": "꼭지를 붕붕 휘둘러 후려친다", "tease": "꼭지를 잡고 빙빙 돌리고 있다", "element": "earth", "cost": 12, "enraged": false },
-        { "text": "사과씨를 퉤퉤 뱉어 쏜다", "tease": "볼이 빵빵하게 부풀었다", "element": "earth", "cost": 10, "enraged": false },
-        { "text": "나무를 흔들어 낙과 폭격을 떨어뜨린다", "tease": "머리 위 가지가 흔들리기 시작한다", "element": "earth", "cost": 16, "enraged": false },
-        { "text": "새빨갛게 익은 분노로 전력 돌진한다", "tease": "홍옥이 더 새빨갛게 달아오른다…!", "element": "fire", "cost": 16, "enraged": true },
-        { "text": "뉴턴의 사과가 되어 하늘에서 수직 낙하한다", "tease": "홍옥이 하늘 높이 떠올랐다…!", "element": "earth", "cost": 19, "enraged": true }
-      ]
+        {
+          "text": "데굴데굴 굴러 몸통 박치기를 한다",
+          "tease": "홍옥이 데굴데굴 구르기 시작한다",
+          "element": "earth",
+          "cost": 14,
+          "enraged": false
+        },
+        {
+          "text": "꼭지를 붕붕 휘둘러 후려친다",
+          "tease": "꼭지를 잡고 빙빙 돌리고 있다",
+          "element": "earth",
+          "cost": 12,
+          "enraged": false
+        },
+        {
+          "text": "사과씨를 퉤퉤 뱉어 쏜다",
+          "tease": "볼이 빵빵하게 부풀었다",
+          "element": "earth",
+          "cost": 10,
+          "enraged": false
+        },
+        {
+          "text": "나무를 흔들어 낙과 폭격을 떨어뜨린다",
+          "tease": "머리 위 가지가 흔들리기 시작한다",
+          "element": "earth",
+          "cost": 16,
+          "enraged": false
+        },
+        {
+          "text": "새빨갛게 익은 분노로 전력 돌진한다",
+          "tease": "홍옥이 더 새빨갛게 달아오른다…!",
+          "element": "fire",
+          "cost": 16,
+          "enraged": true
+        },
+        {
+          "text": "뉴턴의 사과가 되어 하늘에서 수직 낙하한다",
+          "tease": "홍옥이 하늘 높이 떠올랐다…!",
+          "element": "earth",
+          "cost": 19,
+          "enraged": true
+        }
+      ],
+      "gimmick": {
+        "type": "stumble",
+        "every": 3,
+        "label": "풋내기",
+        "text": "🍎 홍옥이 서두르다 데굴데굴 제풀에 넘어졌다! 이번 공격은 힘이 빠졌다"
+      }
     },
     {
-      "id": 2, "name": "호걸", "emoji": "🐯", "title": "주황 줄무늬 맹수", "endurance": 3, "color": "#ff9500",
+      "id": 2,
+      "name": "호걸",
+      "emoji": "🐯",
+      "title": "주황 줄무늬 맹수",
+      "endurance": 3,
+      "color": "#ff9500",
       "trait": "주황 줄무늬가 잔상을 남겨 움직임을 읽기 어렵고 포효로 상대의 기세를 꺾지만, 고양이과라 반짝이는 것을 보면 정신이 팔린다",
       "personality": "산에서 내려온 자신만만한 호랑이. 호탕한 반말과 '어흥'을 섞어 쓴다. 정면 승부를 좋아하고 비겁한 수를 싫어한다.",
       "win_line": "어흥! 이 산은 아직 내 것이다. 더 단련해서 오거라!",
       "lose_line": "어흥… 네 문장, 발톱보다 날카로웠다.",
       "skills": [
-        { "text": "발톱을 세워 삼연격으로 할퀸다", "tease": "발톱이 번뜩인다", "element": "wind", "cost": 13, "enraged": false },
-        { "text": "산이 울리는 포효로 기세를 꺾는다", "tease": "호걸이 숨을 크게 들이쉰다", "element": "wind", "cost": 14, "enraged": false },
-        { "text": "줄무늬 잔상을 남기며 좌우에서 급습한다", "tease": "줄무늬가 여러 갈래로 흩어진다…!", "element": "dark", "cost": 17, "enraged": false },
-        { "text": "꼬리로 다리를 후려 넘어뜨린다", "tease": "꼬리가 낮게 깔린다", "element": "earth", "cost": 12, "enraged": false },
-        { "text": "백수의 왕의 위엄으로 전장을 짓누른다", "tease": "호걸의 눈빛이 달라졌다…!", "element": "light", "cost": 17, "enraged": true },
-        { "text": "야성을 해방해 폭풍 같은 연속 발톱을 퍼붓는다", "tease": "어흐으응!! 갈기가 곤두선다!!", "element": "wind", "cost": 20, "enraged": true }
-      ]
+        {
+          "text": "발톱을 세워 삼연격으로 할퀸다",
+          "tease": "발톱이 번뜩인다",
+          "element": "wind",
+          "cost": 13,
+          "enraged": false
+        },
+        {
+          "text": "산이 울리는 포효로 기세를 꺾는다",
+          "tease": "호걸이 숨을 크게 들이쉰다",
+          "element": "wind",
+          "cost": 14,
+          "enraged": false
+        },
+        {
+          "text": "줄무늬 잔상을 남기며 좌우에서 급습한다",
+          "tease": "줄무늬가 여러 갈래로 흩어진다…!",
+          "element": "dark",
+          "cost": 17,
+          "enraged": false
+        },
+        {
+          "text": "꼬리로 다리를 후려 넘어뜨린다",
+          "tease": "꼬리가 낮게 깔린다",
+          "element": "earth",
+          "cost": 12,
+          "enraged": false
+        },
+        {
+          "text": "백수의 왕의 위엄으로 전장을 짓누른다",
+          "tease": "호걸의 눈빛이 달라졌다…!",
+          "element": "light",
+          "cost": 17,
+          "enraged": true
+        },
+        {
+          "text": "야성을 해방해 폭풍 같은 연속 발톱을 퍼붓는다",
+          "tease": "어흐으응!! 갈기가 곤두선다!!",
+          "element": "wind",
+          "cost": 20,
+          "enraged": true
+        }
+      ],
+      "gimmick": {
+        "type": "roar",
+        "every": 3,
+        "drain": 10,
+        "label": "산군의 포효",
+        "text": "🐯 산이 울리는 포효! 기세에 눌려 기력이 10 샜다"
+      }
     },
     {
-      "id": 3, "name": "미끌", "emoji": "🍌", "title": "노란 미끄럼 결투가", "endurance": 3, "color": "#ffd60a",
+      "id": 3,
+      "name": "미끌",
+      "emoji": "🍌",
+      "title": "노란 미끄럼 결투가",
+      "endurance": 3,
+      "color": "#ffd60a",
       "trait": "껍질이 미끄러워 공격이 스치듯 빗나가고 벗은 껍질을 바닥에 깔아 함정을 만들지만, 껍질이 다 벗겨지면 물러진다",
       "personality": "능글맞은 바나나 결투가. 낄낄대는 반말로 상대를 약올린다. 정면으로 안 싸우고 미끄러지고 흘리고 넘어뜨리는 것이 특기다.",
       "win_line": "낄낄, 또 미끄러졌네? 바닥 조심하라니까~",
       "lose_line": "으엑… 껍질까지 다 벗겨졌잖아. 너 좀 하는데?",
       "skills": [
-        { "text": "껍질을 벗어 바닥에 미끄럼 함정을 깐다", "tease": "미끌이 껍질을 슬쩍 벗기 시작한다", "element": "earth", "cost": 15, "enraged": false },
-        { "text": "미끄러지듯 공격을 흘리고 뒤로 돌아간다", "tease": "몸에서 반질반질 윤이 난다", "element": "wind", "cost": 15, "enraged": false },
-        { "text": "바나나 부메랑을 던져 등 뒤를 노린다", "tease": "노란 곡선을 그리며 무언가 날아온다", "element": "wind", "cost": 14, "enraged": false },
-        { "text": "바나나 다발로 변신해 우수수 후려친다", "tease": "미끌이 여러 개로 늘어난다…!", "element": "earth", "cost": 15, "enraged": false },
-        { "text": "온 바닥을 껍질로 뒤덮는 미끄럼 대참사를 일으킨다", "tease": "낄낄낄! 바닥이 온통 노랗다!!", "element": "earth", "cost": 20, "enraged": true },
-        { "text": "완숙의 힘을 폭발시켜 끈적한 파도로 덮친다", "tease": "미끌의 몸에 갈색 반점이 번진다…!", "element": "water", "cost": 18, "enraged": true }
-      ]
+        {
+          "text": "껍질을 벗어 바닥에 미끄럼 함정을 깐다",
+          "tease": "미끌이 껍질을 슬쩍 벗기 시작한다",
+          "element": "earth",
+          "cost": 15,
+          "enraged": false
+        },
+        {
+          "text": "미끄러지듯 공격을 흘리고 뒤로 돌아간다",
+          "tease": "몸에서 반질반질 윤이 난다",
+          "element": "wind",
+          "cost": 15,
+          "enraged": false
+        },
+        {
+          "text": "바나나 부메랑을 던져 등 뒤를 노린다",
+          "tease": "노란 곡선을 그리며 무언가 날아온다",
+          "element": "wind",
+          "cost": 14,
+          "enraged": false
+        },
+        {
+          "text": "바나나 다발로 변신해 우수수 후려친다",
+          "tease": "미끌이 여러 개로 늘어난다…!",
+          "element": "earth",
+          "cost": 15,
+          "enraged": false
+        },
+        {
+          "text": "온 바닥을 껍질로 뒤덮는 미끄럼 대참사를 일으킨다",
+          "tease": "낄낄낄! 바닥이 온통 노랗다!!",
+          "element": "earth",
+          "cost": 20,
+          "enraged": true
+        },
+        {
+          "text": "완숙의 힘을 폭발시켜 끈적한 파도로 덮친다",
+          "tease": "미끌의 몸에 갈색 반점이 번진다…!",
+          "element": "water",
+          "cost": 18,
+          "enraged": true
+        }
+      ],
+      "gimmick": {
+        "type": "slippery",
+        "every": 2,
+        "limit": 45,
+        "label": "껍질 함정",
+        "text": "🍌 바닥에 깔린 껍질! 미끄러워서 이번 턴은 45자까지만 쓸 수 있다"
+      }
     },
     {
-      "id": 4, "name": "브록 장군", "emoji": "🥦", "title": "초록 편식의 공포", "endurance": 3, "color": "#34c759",
+      "id": 4,
+      "name": "브록 장군",
+      "emoji": "🥦",
+      "title": "초록 편식의 공포",
+      "endurance": 3,
+      "color": "#34c759",
       "trait": "영양이 가득해 상처를 스스로 아물게 하고 쓴맛 안개로 상대의 의욕을 꺾지만, 마요네즈처럼 고소한 것 앞에서는 무력해진다",
       "personality": "편식하는 아이들을 응징하러 온 브로콜리 장군. 군인 말투('~다!')로 짧고 굵게 외친다. 영양소의 힘을 굳게 믿는다.",
       "win_line": "이래서 채소를 먹어야 하는 것이다! 다시 오도록!",
       "lose_line": "크윽… 나의 식이섬유가… 그대는 골고루 먹는 자였군.",
       "skills": [
-        { "text": "쓴맛 안개를 뿜어 의욕을 꺾는다", "tease": "브록 장군이 쓴 숨을 크게 들이쉰다", "element": "wind", "cost": 13, "enraged": false },
-        { "text": "꽃송이 산탄을 사방에 흩뿌린다", "tease": "머리의 꽃송이가 부풀어 오른다", "element": "earth", "cost": 13, "enraged": false },
-        { "text": "굵은 줄기를 창처럼 내질러 찌른다", "tease": "줄기가 창처럼 곧게 선다", "element": "earth", "cost": 13, "enraged": false },
-        { "text": "영양소를 흡수해 상처를 아물게 한다", "tease": "브록 장군이 광합성을 시작한다", "element": "heal", "cost": 14, "enraged": false },
-        { "text": "비타민 대폭발로 초록 충격파를 터뜨린다", "tease": "온몸이 초록빛으로 빛나기 시작한다…!", "element": "light", "cost": 17, "enraged": true },
-        { "text": "강제 편식 교정, 브로콜리 세례를 퍼붓는다", "tease": "하늘에서 브로콜리 그림자가 드리운다!!", "element": "earth", "cost": 19, "enraged": true }
-      ]
+        {
+          "text": "쓴맛 안개를 뿜어 의욕을 꺾는다",
+          "tease": "브록 장군이 쓴 숨을 크게 들이쉰다",
+          "element": "wind",
+          "cost": 13,
+          "enraged": false
+        },
+        {
+          "text": "꽃송이 산탄을 사방에 흩뿌린다",
+          "tease": "머리의 꽃송이가 부풀어 오른다",
+          "element": "earth",
+          "cost": 13,
+          "enraged": false
+        },
+        {
+          "text": "굵은 줄기를 창처럼 내질러 찌른다",
+          "tease": "줄기가 창처럼 곧게 선다",
+          "element": "earth",
+          "cost": 13,
+          "enraged": false
+        },
+        {
+          "text": "영양소를 흡수해 상처를 아물게 한다",
+          "tease": "브록 장군이 광합성을 시작한다",
+          "element": "heal",
+          "cost": 14,
+          "enraged": false
+        },
+        {
+          "text": "비타민 대폭발로 초록 충격파를 터뜨린다",
+          "tease": "온몸이 초록빛으로 빛나기 시작한다…!",
+          "element": "light",
+          "cost": 17,
+          "enraged": true
+        },
+        {
+          "text": "강제 편식 교정, 브로콜리 세례를 퍼붓는다",
+          "tease": "하늘에서 브로콜리 그림자가 드리운다!!",
+          "element": "earth",
+          "cost": 19,
+          "enraged": true
+        }
+      ],
+      "gimmick": {
+        "type": "heal",
+        "every": 3,
+        "label": "광합성",
+        "text": "🥦 광합성! 브록 장군의 상처가 하나 아물었다"
+      }
     },
     {
-      "id": 5, "name": "해일", "emoji": "🌊", "title": "밀려오는 푸른 벽", "endurance": 4, "color": "#0a84ff",
+      "id": 5,
+      "name": "해일",
+      "emoji": "🌊",
+      "title": "밀려오는 푸른 벽",
+      "endurance": 4,
+      "color": "#0a84ff",
       "trait": "몸이 물이라 베어도 갈라졌다 다시 합쳐지고 싸움이 시작될 때부터 물의 장막을 두르고 있지만, 얼어붙으면 움직임이 굳는다",
-      "statuses": ["보호막"],
+      "statuses": [
+        "보호막"
+      ],
       "personality": "깊은 바다에서 올라온 거대한 파도. 낮고 울리는 말투로 천천히 말한다. 서두르지 않는다. 밀려왔다 물러나기를 반복하며 상대를 지치게 한다.",
       "win_line": "…바다는 서두르지 않는다. 너도 언젠가 알게 되리라.",
       "lose_line": "…얼어붙은 파도는… 더 이상 파도가 아니구나…",
       "skills": [
-        { "text": "거대한 파도가 되어 정면을 덮친다", "tease": "수평선이 천천히 부풀어 오른다", "element": "water", "cost": 13, "enraged": false },
-        { "text": "소용돌이를 일으켜 발을 끌어당긴다", "tease": "발밑의 물이 돌기 시작한다", "element": "water", "cost": 14, "enraged": false },
-        { "text": "물기둥을 솟구쳐 하늘에서 떨어뜨린다", "tease": "바닥에서 물이 배어 나온다", "element": "water", "cost": 15, "enraged": false },
-        { "text": "가느다란 수압 칼날로 급소를 벤다", "tease": "물줄기가 실처럼 가늘어진다…", "element": "water", "cost": 14, "enraged": false },
-        { "text": "전장을 통째로 삼키는 대해일을 일으킨다", "tease": "물이 일제히 뒤로 빠져나간다…!!", "element": "water", "cost": 18, "enraged": true },
-        { "text": "심해의 수압으로 사방에서 짓누른다", "tease": "공기가 무겁다… 숨이 막힌다", "element": "water", "cost": 15, "enraged": true }
-      ]
+        {
+          "text": "거대한 파도가 되어 정면을 덮친다",
+          "tease": "수평선이 천천히 부풀어 오른다",
+          "element": "water",
+          "cost": 13,
+          "enraged": false
+        },
+        {
+          "text": "소용돌이를 일으켜 발을 끌어당긴다",
+          "tease": "발밑의 물이 돌기 시작한다",
+          "element": "water",
+          "cost": 14,
+          "enraged": false
+        },
+        {
+          "text": "물기둥을 솟구쳐 하늘에서 떨어뜨린다",
+          "tease": "바닥에서 물이 배어 나온다",
+          "element": "water",
+          "cost": 15,
+          "enraged": false
+        },
+        {
+          "text": "가느다란 수압 칼날로 급소를 벤다",
+          "tease": "물줄기가 실처럼 가늘어진다…",
+          "element": "water",
+          "cost": 14,
+          "enraged": false
+        },
+        {
+          "text": "전장을 통째로 삼키는 대해일을 일으킨다",
+          "tease": "물이 일제히 뒤로 빠져나간다…!!",
+          "element": "water",
+          "cost": 18,
+          "enraged": true
+        },
+        {
+          "text": "심해의 수압으로 사방에서 짓누른다",
+          "tease": "공기가 무겁다… 숨이 막힌다",
+          "element": "water",
+          "cost": 15,
+          "enraged": true
+        }
+      ],
+      "gimmick": {
+        "type": "shield",
+        "every": 3,
+        "label": "물의 장막",
+        "text": "🌊 물의 장막이 다시 차오른다"
+      }
     },
     {
-      "id": 6, "name": "미리내", "emoji": "🌌", "title": "남빛 밤하늘", "endurance": 4, "color": "#5e5ce6",
+      "id": 6,
+      "name": "미리내",
+      "emoji": "🌌",
+      "title": "남빛 밤하늘",
+      "endurance": 4,
+      "color": "#5e5ce6",
       "trait": "어둠에 녹아들어 실체를 잡기 어렵고 별빛을 모아 유성으로 떨어뜨리지만, 강한 빛 앞에서는 모습이 드러나 밤이 걷힌다",
       "personality": "밤하늘 그 자체인 은하수의 화신. 조용한 시적인 말투. 별과 어둠을 오가며 싸우고, 서두르는 법이 없다. 이름은 은하수의 순우리말이다.",
       "win_line": "별은 지지 않는다. 잠시 낮에 가려질 뿐.",
       "lose_line": "…동이 트는구나. 네가 나의 새벽이었다.",
       "skills": [
-        { "text": "별똥별 소나기를 비스듬히 떨어뜨린다", "tease": "별 하나가 길게 꼬리를 그린다", "element": "light", "cost": 15, "enraged": false },
-        { "text": "어둠에 녹아들어 모습을 감추고 기습한다", "tease": "미리내의 윤곽이 흐려진다…", "element": "dark", "cost": 16, "enraged": false },
-        { "text": "별자리를 이어 빛의 결계로 옭아맨다", "tease": "별들이 선으로 이어지기 시작한다", "element": "light", "cost": 15, "enraged": false },
-        { "text": "은하수 물줄기로 채찍처럼 후려친다", "tease": "밤하늘의 강이 굽이치기 시작한다", "element": "water", "cost": 15, "enraged": false },
-        { "text": "밤하늘을 통째로 내려 유성우를 퍼붓는다", "tease": "하늘의 모든 별이 떨어지기 시작한다…!!", "element": "light", "cost": 18, "enraged": true },
-        { "text": "그믐의 어둠으로 전장의 빛을 전부 삼킨다", "tease": "별이 하나씩 꺼져 간다…", "element": "dark", "cost": 17, "enraged": true }
-      ]
+        {
+          "text": "별똥별 소나기를 비스듬히 떨어뜨린다",
+          "tease": "별 하나가 길게 꼬리를 그린다",
+          "element": "light",
+          "cost": 15,
+          "enraged": false
+        },
+        {
+          "text": "어둠에 녹아들어 모습을 감추고 기습한다",
+          "tease": "미리내의 윤곽이 흐려진다…",
+          "element": "dark",
+          "cost": 16,
+          "enraged": false
+        },
+        {
+          "text": "별자리를 이어 빛의 결계로 옭아맨다",
+          "tease": "별들이 선으로 이어지기 시작한다",
+          "element": "light",
+          "cost": 15,
+          "enraged": false
+        },
+        {
+          "text": "은하수 물줄기로 채찍처럼 후려친다",
+          "tease": "밤하늘의 강이 굽이치기 시작한다",
+          "element": "water",
+          "cost": 15,
+          "enraged": false
+        },
+        {
+          "text": "밤하늘을 통째로 내려 유성우를 퍼붓는다",
+          "tease": "하늘의 모든 별이 떨어지기 시작한다…!!",
+          "element": "light",
+          "cost": 18,
+          "enraged": true
+        },
+        {
+          "text": "그믐의 어둠으로 전장의 빛을 전부 삼킨다",
+          "tease": "별이 하나씩 꺼져 간다…",
+          "element": "dark",
+          "cost": 17,
+          "enraged": true
+        }
+      ],
+      "gimmick": {
+        "type": "confuse",
+        "every": 4,
+        "label": "밤의 장막",
+        "text": "🌌 어둠이 짙어진다… 방향이 보이지 않는다 (이번 턴 혼란)"
+      }
     },
     {
-      "id": 7, "name": "포도대왕", "emoji": "🍇", "title": "알알이 무장한 보랏빛 왕", "endurance": 5, "color": "#af52de",
+      "id": 7,
+      "name": "포도대왕",
+      "emoji": "🍇",
+      "title": "알알이 무장한 보랏빛 왕",
+      "endurance": 5,
+      "color": "#af52de",
       "trait": "포도알 하나하나가 분신이라 공격을 맞아도 알이 하나 터질 뿐이며, 알이 전부 터지기 전에는 쓰러지지 않는다. 알이 터질수록 진노한다",
       "personality": "무지개의 끝을 지키는 최종 보스. 왕의 고어체('과인은~', '~하노라')를 쓴다. 과일의 왕이자 색의 왕. 위엄이 넘치지만 알이 터질 때마다 조금씩 체통을 잃는다.",
       "win_line": "과인은 과일의 왕이자 색의 끝이니라. 무지개는 아직 그대의 것이 아니다.",
       "lose_line": "알알이… 흩어지는구나… 좋다, 무지개는 그대의 것이니라.",
       "skills": [
-        { "text": "포도알 융단폭격을 하늘에서 퍼붓는다", "tease": "왕관 위의 알들이 하늘로 떠오른다", "element": "earth", "cost": 15, "enraged": false },
-        { "text": "포도 덩굴을 뻗어 사방에서 옭아맨다", "tease": "옥좌의 덩굴이 꿈틀거린다", "element": "earth", "cost": 14, "enraged": false },
-        { "text": "알알이 분신을 풀어 여덟 방향에서 덮친다", "tease": "포도알들이 하나씩 떨어져 나온다…!", "element": "dark", "cost": 17, "enraged": false },
-        { "text": "보랏빛 왕의 진노로 옥좌째 내리찍는다", "tease": "과인의 옥좌가 떠오르는도다…", "element": "dark", "cost": 15, "enraged": false },
-        { "text": "백 년 묵은 와인의 세월로 시간을 짓누른다", "tease": "전장에 깊고 진한 향이 깔린다…", "element": "dark", "cost": 18, "enraged": true },
-        { "text": "무지개의 끝, 대왕 포도알을 떨어뜨린다", "tease": "하늘이 보랏빛으로 물든다…!! 저것은…!!", "element": "light", "cost": 18, "enraged": true }
-      ]
+        {
+          "text": "포도알 융단폭격을 하늘에서 퍼붓는다",
+          "tease": "왕관 위의 알들이 하늘로 떠오른다",
+          "element": "earth",
+          "cost": 15,
+          "enraged": false
+        },
+        {
+          "text": "포도 덩굴을 뻗어 사방에서 옭아맨다",
+          "tease": "옥좌의 덩굴이 꿈틀거린다",
+          "element": "earth",
+          "cost": 14,
+          "enraged": false
+        },
+        {
+          "text": "알알이 분신을 풀어 여덟 방향에서 덮친다",
+          "tease": "포도알들이 하나씩 떨어져 나온다…!",
+          "element": "dark",
+          "cost": 17,
+          "enraged": false
+        },
+        {
+          "text": "보랏빛 왕의 진노로 옥좌째 내리찍는다",
+          "tease": "과인의 옥좌가 떠오르는도다…",
+          "element": "dark",
+          "cost": 15,
+          "enraged": false
+        },
+        {
+          "text": "백 년 묵은 와인의 세월로 시간을 짓누른다",
+          "tease": "전장에 깊고 진한 향이 깔린다…",
+          "element": "dark",
+          "cost": 18,
+          "enraged": true
+        },
+        {
+          "text": "무지개의 끝, 대왕 포도알을 떨어뜨린다",
+          "tease": "하늘이 보랏빛으로 물든다…!! 저것은…!!",
+          "element": "light",
+          "cost": 18,
+          "enraged": true
+        }
+      ],
+      "gimmick": {
+        "type": "rage",
+        "gain": 15,
+        "label": "알알이 진노",
+        "text": "🍇 포도알이 터졌다! 과인의 진노가 차오른다 (기력 +15)"
+      }
     }
   ]
 }
