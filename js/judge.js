@@ -104,7 +104,9 @@ function loadSettings() {
 
 async function requestOnce(url, payload) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 8_000);
+  // 추론 모델 판정은 10초를 넘기기도 한다. 8초로 잘랐더니 진짜 판정이
+  // 오는 중에도 약식으로 떨어져 버려서, 넉넉히 기다린다.
+  const timer = setTimeout(() => controller.abort(), 25_000);
   try {
     const response = await fetch(`${url.replace(/\/$/, "")}/judge`, {
       method: "POST",
