@@ -129,7 +129,7 @@ function renderHome() {
         : `<p>아직 캐릭터가 없습니다. 한 줄로 당신을 만들어 보세요.</p>`}
     </article>
     <div id="rank-profile" class="rank-profile"><span class="tier-badge">실버</span><strong>1000점</strong><small>랭크 기록을 불러오는 중…</small></div>
-    <p class="progress">격파 ${saved.progress.beatenBossIds.length} / ${gameData?.bosses.length ?? 7} · 🌈 일곱 색을 모두 꺾어라</p>
+    <p class="progress">격파 ${saved.progress.beatenBossIds.length} / ${gameData?.bosses.length ?? 7} · 🌈 일곱 색을 모두 꺾어라${(saved.progress.round ?? 1) > 1 ? ` · ${saved.progress.round}회차` : ""}</p>
     <div class="home-actions">
       <button class="button primary" data-action="challenge">보스 도전</button>
       <button class="button ranked-button" data-action="ranked" disabled>랭크전</button>
@@ -745,7 +745,8 @@ function renderResult() {
       <div class="highlight"><small>이 판의 명장면</small><p>${escapeHtml(lastNarration)}</p></div>
       <div class="result-actions">
         ${hasNext ? `<button class="button primary" data-action="next-boss">다음 보스 — ${escapeHtml(nextBoss.emoji)} ${escapeHtml(nextBoss.name)}</button>` : ""}
-        ${won && !hasNext ? `<p class="all-clear">🌈 일곱 색을 모두 꺾었습니다! 무지개는 당신의 것입니다.</p>` : ""}
+        ${won && !hasNext ? `<p class="all-clear">🌈 일곱 색을 모두 꺾었습니다! 무지개는 당신의 것입니다.</p>
+        <button class="button primary" data-action="new-round">🌈 처음부터 다시 — ${(loadData().progress.round ?? 1) + 1}회차 도전</button>` : ""}
         <button class="button ${hasNext ? "" : "primary"}" data-action="retry">다시 도전</button>
         <button class="button" data-action="home">홈으로</button>
         <button class="button" data-action="copy">로그 복사</button>
@@ -753,6 +754,14 @@ function renderResult() {
     </div>`;
   document.querySelector('[data-action="next-boss"]')?.addEventListener("click",
     () => startBattle(loadData().character, bossIndex + 1));
+  // 일곱 색을 다 꺾으면 격파 기록을 비우고 홍옥부터 새 여정을 시작한다 (회차 +1)
+  document.querySelector('[data-action="new-round"]')?.addEventListener("click", () => {
+    const saved = loadData();
+    saved.progress.beatenBossIds = [];
+    saved.progress.round = (saved.progress.round ?? 1) + 1;
+    saveData(saved);
+    startBattle(saved.character, 0);
+  });
   document.querySelector('[data-action="retry"]').addEventListener("click",
     () => startBattle(loadData().character, bossIndex));
   document.querySelector('[data-action="home"]').addEventListener("click", () => { renderHome(); navigate("home"); });

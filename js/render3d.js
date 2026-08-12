@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { initVFX } from "./vfx.js";
 
 let scene;
 let camera;
@@ -18,6 +19,7 @@ let motes;          // 필드 분위기를 만드는 떠다니는 입자
 let moteFall = 0;   // 0이면 부유, 1이면 비처럼 떨어짐
 let moteCount = 0;
 let onMotion = null;   // 모션 시작 알림 (효과음 연결용)
+let vfx = null;        // 원소 이펙트 모듈 (vfx.js)
 
 // 모션이 재생될 때마다 호출될 함수를 등록한다. 렌더러가 소리를 직접 다루지 않게 분리했다.
 export function setMotionListener(fn) { onMotion = fn; }
@@ -494,6 +496,7 @@ export function init(target) {
   dirLight.position.set(3, 6, 4);
   scene.add(dirLight);
   actors = { p1: makeActor("p1"), p2: makeActor("p2") };
+  vfx = initVFX({ scene, tween });
   resizeObserver = new ResizeObserver(resizeToContainer);
   resizeObserver.observe(target);
   resizeToContainer();
@@ -748,7 +751,10 @@ export async function playTurn(motions = [], effects = [], onDone = () => {}) {
   }
   for (const effect of effects) {
     const target = actors[effect.target]?.root.position.clone().add(new THREE.Vector3(0, 1.3, 0));
-    if (target) burst(target, EFFECT_COLORS[effect.type] || 0xffffff, 12 + effect.intensity * 8);
+    if (!target) continue;
+    burst(target, EFFECT_COLORS[effect.type] || 0xffffff, 12 + effect.intensity * 8);
+    // 원소별 전용 연출 (셰이더 화염·낙뢰·보호막 돔 등). 실패해도 전투는 계속된다.
+    try { vfx?.spawn(effect.type, actors[effect.target].root.position, effect.intensity); } catch { /* 파티클만으로 진행 */ }
   }
   for (const motion of motions) await animateMotion(motion);
   const cameraReturnStart = camera.position.clone();

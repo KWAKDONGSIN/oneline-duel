@@ -56,3 +56,13 @@ npx wrangler deploy
   들고 있어야 해서 로컬 `server/server.mjs`에서만 동작합니다.
 - 판정 서버에는 IP당 분당 20회·하루 300회 제한이 걸려 있습니다. OpenAI 대시보드에서 지출 한도도
   별도로 설정해 두세요.
+
+## 오픈소스 출처
+
+| 이름 | 라이선스 | 사용 범위 |
+|---|---|---|
+| [three.js](https://github.com/mrdoob/three.js) | MIT | 3D 렌더링 엔진 (`libs/`에 벤더링) |
+| [LinearAbiltyCastingThreeJS](https://github.com/achrefelouafi/LinearAbiltyCastingThreeJS) | MIT | GLSL 노이즈·셰이딩 라이브러리(심플렉스 노이즈, fbm, ridged, 보로노이, 프레넬, 그라데이션)를 `js/vfx.js`에 이식해 원소 이펙트 셰이더의 재료로 사용 |
+
+두 프로젝트 모두 MIT 라이선스이며, 이미지·오디오 등 에셋 파일은 가져오지 않았습니다
+(이 게임의 그래픽과 소리는 전부 코드로 생성합니다).
