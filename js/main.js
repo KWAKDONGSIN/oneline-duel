@@ -454,6 +454,7 @@ function renderBattle() {
     render3d.setField(battle.field);
     render3d.setBossShape(boss.id, bossColorHex(boss));   // 보스 생김새 그대로, 그 보스의 색으로
     render3d.setPhase("typing");
+    render3d.setTelegraph(bossSkill?.element);   // 입력하는 동안 보스가 다음 기술을 슬로우 모션으로 준비한다
     render3d.setWounds("p1", p1.wounds);
     render3d.setWounds("p2", p2.wounds);
   });

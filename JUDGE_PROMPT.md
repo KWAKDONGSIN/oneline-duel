@@ -71,7 +71,7 @@
 
 - effects: 시각 효과 0~3개. type ∈ fire/water/lightning/wind/earth/shield/heal/dark/light,
   target은 효과가 터지는 쪽, intensity 1~3 (치명타·카운터 성공은 3).
-- motions: 스틱맨이 재생할 동작 0~3개, 시간 순서대로. 각 항목은 actor(동작 주체)와
+- motions: 캐릭터가 재생할 동작 0~3개, 시간 순서대로. 각 항목은 actor(동작 주체)와
   motion(아래 목록의 id만 사용). 문장이 묘사한 동작에 가장 가까운 것을 골라라.
   slash(베기) stab(찌르기) shoot(사격·발사체) laser(광선) beam_clash(빔 대치)
   cast(마법 시전) flame(화염 방사) water_burst(물 분출) bolt(낙뢰) gust(돌풍)

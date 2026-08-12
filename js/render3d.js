@@ -426,6 +426,23 @@ function renderLoop() {
     const feint2 = Math.max(0, Math.sin(elapsed * 1.7 + 2.4) - 0.92) * 8;
     actors.p1.armR.rotation.z = 0.18 - feint1;
     actors.p2.armR.rotation.z = 0.18 + feint2;
+    if (telegraph) {
+      // 다음 기술을 준비하는 슬로우 모션 — 팔을 끌어올리며 몸 전체를 천천히 뒤로 젖힌다.
+      // 팔이 짧은 보스(사과·파도)도 몸의 기울기로 준비 동작이 읽힌다.
+      const windup = 0.5 + Math.sin(elapsed * 0.7) * 0.5;
+      actors.p2.armR.rotation.z = 0.18 + windup * 1.1;
+      actors.p2.armL.rotation.z = -0.18 - windup * 0.4;
+      actors.p2.root.rotation.z = windup * 0.16;
+      const base = actors.p2.root.position;
+      for (let i = 0; i < telegraph.count; i += 1) {
+        const angle = elapsed * 0.6 + (i / telegraph.count) * Math.PI * 2;
+        telegraph.positions[i * 3] = base.x + Math.cos(angle) * 0.7;
+        telegraph.positions[i * 3 + 1] = 1.15 + Math.sin(elapsed * 0.9 + i * 1.7) * 0.55;
+        telegraph.positions[i * 3 + 2] = base.z + Math.sin(angle) * 0.7;
+      }
+      telegraph.aura.geometry.attributes.position.needsUpdate = true;
+      telegraph.aura.material.opacity = 0.35 + windup * 0.3;
+    }
   }
   // 필드 입자 움직임. 비는 떨어지고, 나머지는 천천히 위로 떠오른다. 바닥에 닿으면 위로 되돌린다.
   if (motes) {
@@ -505,7 +522,40 @@ export function init(target) {
 }
 
 export function setActors() {}
-export function setPhase(nextPhase) { phase = nextPhase; }
+export function setPhase(nextPhase) {
+  phase = nextPhase;
+  if (nextPhase !== "typing") clearTelegraph();   // 입력이 끝나면 예고 동작도 멈춘다
+}
+
+// ── 다음 기술 예고 ─────────────────────────────────────────────
+// 플레이어가 문장을 쓰는 동안, 보스는 다음 기술을 슬로우 모션으로 준비한다.
+// 원소색 기운이 몸 주위를 돌아 "무엇이 올지"가 화면에서도 읽힌다.
+let telegraph = null;
+
+export function setTelegraph(element) {
+  clearTelegraph();
+  if (!scene || !actors?.p2 || !element) return;
+  // 원소색을 흰색 쪽으로 끌어올려 어두운 필드에서도 확실히 읽히게 한다
+  const color = new THREE.Color(EFFECT_COLORS[element] ?? 0xffffff).lerp(new THREE.Color(0xffffff), 0.35);
+  const count = 14;
+  const positions = new Float32Array(count * 3);
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  const aura = new THREE.Points(geometry, new THREE.PointsMaterial({
+    color, size: 0.14, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending,
+  }));
+  scene.add(aura);
+  telegraph = { aura, positions, count };
+}
+
+function clearTelegraph() {
+  if (!telegraph) return;
+  scene.remove(telegraph.aura);
+  telegraph.aura.geometry.dispose();
+  telegraph.aura.material.dispose();
+  telegraph = null;
+  if (actors?.p2) actors.p2.root.rotation.z = 0;   // 젖혔던 몸을 되돌린다
+}
 
 // 보스의 몸 색을 그 보스의 색으로 물들인다. 무지개 보스는 색이 곧 정체성이다.
 export function setBossColor(hex) {
@@ -737,6 +787,7 @@ export function setField(field) {
 
 export async function playTurn(motions = [], effects = [], onDone = () => {}) {
   phase = "resolving";
+  clearTelegraph();
   const strongest = [...effects].sort((a, b) => b.intensity - a.intensity)[0];
   const cameraStart = camera.position.clone();
   if (strongest && actors[strongest.target]) {
@@ -776,6 +827,7 @@ export async function rainbowReflect(side) {
   const hit = target.root.position.clone().add(new THREE.Vector3(0, 1.2, 0));
   const cameraStart = camera.position.clone();
   phase = "resolving";
+  clearTelegraph();
   resetPose(actor);
 
   // 1. 두 팔을 들어 올리며 흰 빛의 핵을 모은다
