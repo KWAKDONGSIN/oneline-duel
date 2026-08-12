@@ -1,3 +1,5 @@
+import { bestMatch } from "./similarity.js";
+
 const ALLOWED_STATUSES = new Set(["화상", "감전", "보호막", "혼란"]);
 
 function makeCombatant(definition, isBoss) {
@@ -125,11 +127,15 @@ export function surrender(battle, side) {
   battle.log.push({ type: "system", who: side, text: `🏳️ ${battle[side].name}이(가) 항복했다.` });
 }
 
-// 훈련소에서 등록한 필살기와 일치하는지 본다. 공백 차이는 무시한다.
+// 훈련소에서 등록한 필살기와 맞는지 본다. 먼저 글자 그대로 비교하고,
+// 어긋나면 문장을 벡터로 바꿔 뜻이 얼마나 닮았는지로 판단한다.
+// 토씨 하나까지 외워야 발동한다면 아무도 쓰지 않을 기능이기 때문이다.
 export function findTrainedSkill(text, trained = []) {
   const normalized = String(text ?? "").replace(/\s+/g, "");
-  if (!normalized) return null;
-  return trained.find((skill) => String(skill.text ?? "").replace(/\s+/g, "") === normalized) ?? null;
+  if (!normalized || !trained.length) return null;
+  const exact = trained.find((skill) => String(skill.text ?? "").replace(/\s+/g, "") === normalized);
+  if (exact) return exact;
+  return bestMatch(normalized, trained, (skill) => skill.text)?.match ?? null;
 }
 
 export function countText(text) {

@@ -927,8 +927,9 @@ function renderDojo() {
   navigate("dojo");
   const trained = loadData().trained;
   document.querySelector("#dojo-content").innerHTML = `
-    <p class="panel">필살기를 미리 수련해 두세요. 전투에서 등록한 문장을 <b>그대로 타이핑</b>하면
-      전용 연출과 함께 발동하고, 심판도 수련한 기술임을 알아봅니다. (보스전 · 최대 3개)</p>
+    <p class="panel">필살기를 미리 수련해 두세요. 전투에서 등록한 문장을 쓰면 전용 연출과 함께
+      발동하고, 심판도 수련한 기술임을 알아봅니다. <b>토씨가 조금 달라도 뜻이 통하면 발동</b>하니
+      외울 필요는 없습니다. (보스전 · 최대 3개)</p>
     <div id="dojo-stage" class="stage" aria-hidden="true"></div>
     ${trained.length ? `<ul class="dojo-list">
       ${trained.map((skill, index) => `
