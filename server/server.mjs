@@ -154,10 +154,35 @@ async function requestAiJudgment(payload) {
   }
 }
 
+// 키가 없을 때는 판정을 배포된 Worker에 위임한다. API 키는 Worker 한 곳에만 두고,
+// 이 서버는 키 없이도 진짜 판정을 쓸 수 있다.
+const DELEGATE_JUDGE_URL = (env.JUDGE_URL || "https://onelineduel-judge.dkmdkm999.workers.dev").replace(/\/$/, "");
+
+async function delegateJudgment(payload) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 40_000);
+  try {
+    const response = await fetch(`${DELEGATE_JUDGE_URL}/judge`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`judge ${response.status}`);
+    return await response.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function judgePayload(payload) {
-  if (env.MOCK === "1" || !env.OPENAI_API_KEY) return createMockJudgment(payload);
-  try { return await requestAiJudgment(payload); }
-  catch { return createMockJudgment(payload); }
+  if (env.MOCK === "1") return createMockJudgment(payload);
+  try {
+    if (env.OPENAI_API_KEY) return await requestAiJudgment(payload);
+    return await delegateJudgment(payload);
+  } catch {
+    return createMockJudgment(payload);
+  }
 }
 
 export function tierFor(rating) {
@@ -488,6 +513,7 @@ const server = http.createServer(async (request, response) => {
 
 // 호스팅 환경(Render 등)에서는 0.0.0.0에 바인딩해야 외부 요청을 받는다.
 server.listen(PORT, "0.0.0.0", () => {
-  const judgeMode = env.MOCK === "1" || !env.OPENAI_API_KEY ? "MOCK" : env.OPENAI_MODEL || "gpt-5-mini";
+  const judgeMode = env.MOCK === "1" ? "MOCK"
+    : env.OPENAI_API_KEY ? (env.OPENAI_MODEL || "gpt-5-mini") : "Worker 위임";
   console.log(`무지개 반사 서버: http://localhost:${PORT} (판정 ${judgeMode}, 봇 대기 ${BOT_WAIT_MS / 1000}초)`);
 });
