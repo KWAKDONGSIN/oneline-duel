@@ -138,7 +138,7 @@ async function requestAiJudgment(payload) {
         instructions: JUDGE_PROMPT,
         input: userMessage(payload),
         max_output_tokens: 2000,
-        reasoning: { effort: "low" },
+        reasoning: { effort: "minimal" },   // 판정 대기를 줄인다 (worker.js와 동일)
         text: { format: { type: "json_schema", name: "judgment", strict: true, schema: JUDGMENT_SCHEMA } },
       }),
       signal: controller.signal,

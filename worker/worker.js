@@ -98,7 +98,9 @@ export default {
           input: userMessage(payload),
           // 추론 모델은 내부 추론에도 토큰을 쓴다. 한도가 빠듯하면 정작 출력이 비어서 돌아온다.
           max_output_tokens: 2000,
-          reasoning: { effort: "low" },
+          // low는 판정이 9~25초까지 걸렸다. 판정은 창작 위주 작업이라 minimal로도
+          // 품질이 유지되는 것을 실측으로 확인했고, 대기가 절반 이하로 줄었다.
+          reasoning: { effort: "minimal" },
           text: { format: { type: "json_schema", name: "judgment", strict: true, schema: JUDGMENT_SCHEMA } },
         }),
         signal: controller.signal,
