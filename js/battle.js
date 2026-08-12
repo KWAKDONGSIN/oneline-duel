@@ -125,6 +125,13 @@ export function surrender(battle, side) {
   battle.log.push({ type: "system", who: side, text: `🏳️ ${battle[side].name}이(가) 항복했다.` });
 }
 
+// 훈련소에서 등록한 필살기와 일치하는지 본다. 공백 차이는 무시한다.
+export function findTrainedSkill(text, trained = []) {
+  const normalized = String(text ?? "").replace(/\s+/g, "");
+  if (!normalized) return null;
+  return trained.find((skill) => String(skill.text ?? "").replace(/\s+/g, "") === normalized) ?? null;
+}
+
 export function countText(text) {
   return text.replace(/\s+/g, "").length;
 }

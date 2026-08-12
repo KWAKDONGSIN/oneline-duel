@@ -3,6 +3,7 @@ import {
   buildJudgePayload,
   countText,
   createBattle,
+  findTrainedSkill,
   inputCost,
   isRainbowReflect,
   resolveRainbow,
@@ -48,7 +49,7 @@ import {
   tierFor,
 } from "./account.js";
 
-const ROUTES = new Set(["home", "create", "battle", "result", "ranking"]);
+const ROUTES = new Set(["home", "create", "battle", "result", "ranking", "dojo"]);
 const STATUS_LABELS = {
   화상: "다음 턴 기술이 약해진다",
   감전: "다음 턴 기력 소모 +30%",
@@ -134,6 +135,7 @@ function renderHome() {
       <button class="button primary" data-action="challenge">보스 도전</button>
       <button class="button ranked-button" data-action="ranked" disabled>랭크전</button>
       <button class="button" data-action="casual" disabled>일반전</button>
+      <button class="button" data-action="dojo">🏯 훈련소</button>
       <button class="button" data-action="ranking">랭킹</button>
       <button class="button" data-action="settings">설정</button>
     </div>
@@ -155,6 +157,7 @@ function renderHome() {
   });
   document.querySelector('[data-action="ranked"]').addEventListener("click", () => startOnlineMatch("ranked"));
   document.querySelector('[data-action="casual"]').addEventListener("click", () => startOnlineMatch("casual"));
+  document.querySelector('[data-action="dojo"]').addEventListener("click", renderDojo);
   document.querySelector('[data-action="ranking"]').addEventListener("click", renderRanking);
   document.querySelector('[data-action="settings"]').addEventListener("click", openSettings);
   document.querySelectorAll("[data-track]").forEach((button) => {
@@ -508,7 +511,13 @@ async function submitSkill(event) {
   if (!playerValidation.ok) return;
   validateInput(battle, "p2", bossSkill.text);
 
+  // 훈련소에서 수련한 필살기와 문장이 일치하면 필살기로 발동한다
+  const trainedSkill = findTrainedSkill(playerText, loadData().trained);
   battle.log.push({ type: "skill", who: "p1", text: `${battle.p1.name}: ${playerText}` });
+  if (trainedSkill) {
+    battle.log.push({ type: "system", who: "p1", text: `⚔️ 수련한 필살기 — ${trainedSkill.name} 발동!` });
+    playSfx("cast");
+  }
   battle.log.push({ type: "skill", who: "p2", text: `${battle.p2.name}: ${bossSkill.text}` });
   battle.phase = "resolving";
   input.disabled = true;
@@ -519,7 +528,14 @@ async function submitSkill(event) {
   document.querySelector("#battle-log").append(waiting);
 
   const payload = buildJudgePayload(battle, playerText, bossSkill.text);
+  if (trainedSkill) payload.p1.trained_skill = trainedSkill.name;   // 심판에게 수련 기술임을 알린다
   const judgment = await requestJudgment(payload);
+  if (trainedSkill) {
+    // 필살기는 등록한 원소의 최대 강도 연출이 함께 나간다 (회복·방패는 나를 향한다)
+    const selfTarget = ["heal", "shield"].includes(trainedSkill.element);
+    judgment.effects = [...(judgment.effects ?? []),
+      { type: trainedSkill.element, target: selfTarget ? "p1" : "p2", intensity: 3 }];
+  }
   if (judgment._fallback && !loadData().settings.offline && !fallbackNoticeShown) {
     fallbackNoticeShown = true;
     showToast("판정 서버에 연결할 수 없어 약식 판정으로 진행합니다. 설정에서 서버 주소를 확인하세요.");
@@ -892,6 +908,90 @@ function openNicknameModal() {
     renderAccountBar();
     renderHome();
     showToast("닉네임이 저장되었습니다");
+  });
+}
+
+// ── 훈련소 ─────────────────────────────────────────────────────
+// 필살기를 미리 수련해 두면, 전투에서 그 문장을 그대로 타이핑했을 때
+// 전용 연출과 함께 발동하고 심판도 수련한 기술임을 알아본다.
+const DOJO_ELEMENTS = [
+  ["fire", "🔥 불"], ["water", "🌊 물"], ["lightning", "⚡ 번개"], ["wind", "🍃 바람"],
+  ["earth", "🪨 땅"], ["shield", "🛡 방패"], ["heal", "💚 회복"], ["dark", "🌑 어둠"], ["light", "✨ 빛"],
+];
+
+function elementLabel(id) {
+  return DOJO_ELEMENTS.find(([elementId]) => elementId === id)?.[1] ?? id;
+}
+
+function renderDojo() {
+  navigate("dojo");
+  const trained = loadData().trained;
+  document.querySelector("#dojo-content").innerHTML = `
+    <p class="panel">필살기를 미리 수련해 두세요. 전투에서 등록한 문장을 <b>그대로 타이핑</b>하면
+      전용 연출과 함께 발동하고, 심판도 수련한 기술임을 알아봅니다. (보스전 · 최대 3개)</p>
+    <div id="dojo-stage" class="stage" aria-hidden="true"></div>
+    ${trained.length ? `<ul class="dojo-list">
+      ${trained.map((skill, index) => `
+        <li>
+          <div><strong>${escapeHtml(skill.name)}</strong> <span class="dojo-element">${escapeHtml(elementLabel(skill.element))}</span>
+          <p class="dojo-text">${escapeHtml(skill.text)}</p></div>
+          <div class="dojo-actions">
+            <button class="link-button" data-preview="${index}">미리보기</button>
+            <button class="link-button" data-remove="${index}">삭제</button>
+          </div>
+        </li>`).join("")}
+    </ul>` : ""}
+    ${trained.length < 3 ? `
+    <form id="dojo-form" class="panel form-stack">
+      <label>필살기 이름 (8자 이내)<input id="dojo-name" maxlength="8" required placeholder="예: 되돌리기"></label>
+      <label>발동 문장 (60자 이내)<textarea id="dojo-text" rows="2" maxlength="60" required placeholder="예: 호수의 물을 끌어올려 거대한 물의 벽으로 모든 것을 막는다"></textarea></label>
+      <label>원소 (연출 색과 소리가 정해집니다)<select id="dojo-element">
+        ${DOJO_ELEMENTS.map(([id, label]) => `<option value="${id}">${label}</option>`).join("")}
+      </select></label>
+      <button class="button primary" type="submit">수련 등록</button>
+      <p id="dojo-error" class="error"></p>
+    </form>` : `<p class="panel">수련은 세 가지까지입니다. 하나를 비우면 새로 등록할 수 있습니다.</p>`}
+    <button class="button" data-action="dojo-home">홈으로</button>`;
+
+  safe3d(() => {
+    render3d.init(document.querySelector("#dojo-stage"));
+    render3d.setField(null);
+    render3d.setBossShape(null, null);
+    render3d.setPhase("idle");
+  });
+
+  document.querySelectorAll("[data-preview]").forEach((button) => button.addEventListener("click", () => {
+    const skill = loadData().trained[Number(button.dataset.preview)];
+    if (!skill) return;
+    startAudioOnce();
+    playSfx("cast");
+    safe3d(() => render3d.playTurn([], [{ type: skill.element, target: "p2", intensity: 3 }]));
+  }));
+  document.querySelectorAll("[data-remove]").forEach((button) => button.addEventListener("click", () => {
+    const data = loadData();
+    data.trained.splice(Number(button.dataset.remove), 1);
+    saveData(data);
+    renderDojo();
+  }));
+  document.querySelector("#dojo-form")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const name = document.querySelector("#dojo-name").value.trim();
+    const text = document.querySelector("#dojo-text").value.trim();
+    const element = document.querySelector("#dojo-element").value;
+    const error = document.querySelector("#dojo-error");
+    if (!name || !text) { error.textContent = "이름과 발동 문장을 채워 주세요."; return; }
+    if (isRainbowReflect(text)) { error.textContent = "그 문장은 수련이 필요 없는 비기입니다."; return; }
+    const data = loadData();
+    if (findTrainedSkill(text, data.trained)) { error.textContent = "이미 같은 문장의 필살기가 있습니다."; return; }
+    data.trained.push({ name, text, element });
+    saveData(data);
+    startAudioOnce();
+    playSfx("cast");
+    renderDojo();
+  });
+  document.querySelector('[data-action="dojo-home"]').addEventListener("click", () => {
+    renderHome();
+    navigate("home");
   });
 }
 

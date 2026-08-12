@@ -63,7 +63,8 @@ function userMessage(payload) {
     return `[${side}] 이름:${data.name} 속성:${data.trait}\n`
       + `부상:${data.wounds ?? 0}(${woundName(data.wounds)}) 상태:${(data.statuses || []).join(",") || "없음"} `
       + `발악:${data.last_stand ? "예" : "아니오"} 코스트:${data.cost}`
-      + `${data.personality ? ` 말투:${data.personality}` : ""}\n기술: ${data.text}`;
+      + `${data.personality ? ` 말투:${data.personality}` : ""}`
+      + `${data.trained_skill ? ` 수련필살기:${data.trained_skill}` : ""}\n기술: ${data.text}`;
   };
   return `[필드] ${payload.field || "없음"}\n[턴] ${payload.turn}\n${fighter("p1")}\n${fighter("p2")}`;
 }

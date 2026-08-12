@@ -9,6 +9,8 @@ const DEFAULT_DATA = {
     sfx: true, music: true,
   },
   record: { wins: 0, losses: 0 },
+  // 훈련소에서 등록한 필살기 목록. { name, text, element } 최대 3개.
+  trained: [],
   // 로그인 계정 관련 로컬 상태. inherited는 게스트 기록을 계정에 한 번만 승계하기 위한 표시다.
   account: { inherited: false },
 };
