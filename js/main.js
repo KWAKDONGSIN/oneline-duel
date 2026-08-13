@@ -422,6 +422,11 @@ function renderBattle() {
         <button class="button primary" id="skill-submit" type="submit" disabled>기술 발동</button>
       </form>
       <div class="skill-meta"><span id="skill-count">0자 / 기력 ${p1.energy}</span><span id="skill-error" class="error"></span></div>
+      <div class="hint-row">
+        <span class="hint-label">막막하면</span>
+        ${counterHints(bossSkill?.element).map((hint) =>
+          `<button type="button" class="hint-chip" data-hint="${escapeHtml(hint)}">${escapeHtml(hint)}</button>`).join("")}
+      </div>
       <button class="surrender-button" id="surrender-button" type="button">🏳️ 항복</button>
     </div>`;
 
@@ -447,6 +452,7 @@ function renderBattle() {
     }
   });
   document.querySelector("#skill-form").addEventListener("submit", submitSkill);
+  wireHints("#skill-input");
   armSurrenderButton(document.querySelector("#surrender-button"), () => {
     if (battle.phase !== "input") return;   // 판정이 도는 중에는 항복할 수 없다
     surrender(battle, "p1");
@@ -462,6 +468,41 @@ function renderBattle() {
     render3d.setWounds("p2", p2.wounds);
   });
   playBossMusic(boss.id);   // 보스전에는 필드와 무관하게 그 보스의 테마곡이 흐른다
+}
+
+// ── 공략 힌트 ───────────────────────────────────────────────────
+// 텍스트 배틀의 가장 큰 벽은 빈 입력창이다. 무엇을 써야 할지 몰라 얼어붙으면
+// 그대로 이탈한다. 그래서 상대가 예고한 속성을 받아치는 방향을 세 갈래로 보여준다.
+// 정답을 주는 것이 아니라 "이런 식으로 겨루는 게임"이라는 걸 한 번에 알려주는 장치다.
+const COUNTER_HINTS = {
+  fire: ["물줄기를 끌어와 불길을 정면에서 꺼버린다", "차가운 냉기를 뿜어 불꽃을 얼려 굳힌다", "불길을 옆으로 흘려보내고 등 뒤로 파고든다"],
+  water: ["물을 통째로 얼려 발밑까지 묶어버린다", "물살을 흘려보내며 옆으로 빠져나간다", "물줄기에 전기를 흘려 그대로 되돌린다"],
+  lightning: ["번개를 땅으로 흘려보내 그대로 흡수시킨다", "마른 흙벽을 세워 전류를 가로막는다", "번개가 떨어지기 전에 옆으로 몸을 던진다"],
+  wind: ["몸을 낮춰 바람이 머리 위로 지나가게 한다", "바람의 흐름을 타고 오히려 가속해 파고든다", "무거운 것을 붙잡고 바람을 버텨낸다"],
+  earth: ["굴러오는 기세를 옆으로 흘려보낸다", "위로 뛰어올라 땅의 공격을 넘긴다", "정면으로 받아쳐 그대로 되돌려 보낸다"],
+  dark: ["빛을 터뜨려 어둠을 단숨에 걷어낸다", "눈을 감고 소리만으로 위치를 잡아낸다", "어둠째로 붙잡아 통째로 끌어당긴다"],
+  light: ["그림자 속으로 몸을 숨겨 빛을 피한다", "거울처럼 받아쳐 빛을 그대로 반사한다", "눈을 가리고 빛의 중심으로 파고든다"],
+  shield: ["방패를 우회해 등 뒤의 빈틈을 노린다", "한 점만 집요하게 두드려 방패를 깨뜨린다", "방패째로 밀어붙여 균형을 무너뜨린다"],
+  heal: ["회복을 시작한 틈을 노려 파고든다", "상처를 다시 벌려 회복을 무의미하게 만든다", "회복보다 빠르게 몰아쳐 밀어붙인다"],
+};
+const DEFAULT_HINTS = ["상대의 빈틈을 노려 정확히 파고든다", "정면으로 받아쳐 그대로 되돌려 보낸다", "옆으로 흘려보내며 등 뒤를 잡는다"];
+
+function counterHints(element) {
+  return COUNTER_HINTS[element] ?? DEFAULT_HINTS;
+}
+
+// 힌트를 눌렀을 때 입력창을 채우고, 글자 수·기력 표시도 함께 갱신한다.
+function wireHints(inputSelector) {
+  document.querySelectorAll("[data-hint]").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      const input = document.querySelector(inputSelector);
+      if (!input || input.disabled) return;
+      input.value = chip.dataset.hint;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.focus();
+      playSfx("click");
+    });
+  });
 }
 
 // "#ff3b30" 같은 색 문자열을 three.js가 먹는 숫자로 바꾼다.
@@ -660,10 +701,16 @@ function renderOnlineBattle(state) {
         <textarea id="online-skill-input" rows="2" maxlength="${maxLength}" placeholder="한 줄로 기술을 쓰세요"></textarea>
         <button class="button primary" id="online-skill-submit" type="submit" disabled>기술 발동</button>
       </form>
-      <div class="skill-meta"><span id="online-skill-count">0자 / 기력 ${me.energy}</span><span id="online-skill-error" class="error"></span></div>`}
+      <div class="skill-meta"><span id="online-skill-count">0자 / 기력 ${me.energy}</span><span id="online-skill-error" class="error"></span></div>
+      <div class="hint-row">
+        <span class="hint-label">막막하면</span>
+        ${DEFAULT_HINTS.map((hint) =>
+          `<button type="button" class="hint-chip" data-hint="${escapeHtml(hint)}">${escapeHtml(hint)}</button>`).join("")}
+      </div>`}
       <button class="surrender-button" id="online-surrender" type="button">🏳️ 항복</button>
     </div>`;
 
+  wireHints("#online-skill-input");
   armSurrenderButton(document.querySelector("#online-surrender"), async () => {
     try {
       const updated = await forfeitMatch();
