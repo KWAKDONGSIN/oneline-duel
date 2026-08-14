@@ -615,7 +615,7 @@ async function startOnlineMatch(mode) {
     let state = null;
     for (let attempt = 0; attempt < 4 && !state; attempt += 1) {
       try {
-        state = await joinQueue(mode, character);
+        state = await joinQueue(mode, character, loadData().trained);
       } catch (error) {
         if (attempt === 3) throw error;
         const note = document.querySelector("#matchmaking-note");
@@ -667,6 +667,8 @@ async function handleOnlineState(state) {
       playSfx("rainbow");
       await safe3d(() => render3d.rainbowReflect(state.lastTurn.rainbow));
     } else {
+      // 서버가 인정한 필살기가 있으면 시전음과 함께 재생한다
+      if (state.lastTurn.trained?.[state.side]) playSfx("cast");
       await safe3d(() => render3d.playTurn(state.lastTurn.judgment.motions, state.lastTurn.judgment.effects));
     }
   }

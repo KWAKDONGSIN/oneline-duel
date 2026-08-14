@@ -2,7 +2,17 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { beginTurn, buildJudgePayload, createBattle, isRainbowReflect, resolveRainbow, resolveTurn, surrender, validateInput } from "../js/battle.js";
+import { beginTurn, buildJudgePayload, createBattle, findTrainedSkill, isRainbowReflect, resolveRainbow, resolveTurn, surrender, validateInput } from "../js/battle.js";
+
+// 훈련소 필살기는 클라이언트가 보내오지만, 발동 여부는 서버가 직접 판단한다.
+// 넘어온 목록은 개수·길이를 잘라 그대로 믿지 않는다.
+function sanitizeTrained(list) {
+  if (!Array.isArray(list)) return [];
+  return list.slice(0, 3).map((skill) => ({
+    name: String(skill?.name ?? "").slice(0, 8),
+    text: String(skill?.text ?? "").slice(0, 60),
+  })).filter((skill) => skill.name && skill.text);
+}
 
 const SERVER_DIR = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.dirname(SERVER_DIR);
@@ -295,13 +305,26 @@ async function resolveMatch(match) {
 
 async function runJudgement(match) {
   const payload = buildJudgePayload(match.battle, match.submitted.p1, match.submitted.p2);
+  // 수련한 필살기인지는 서버가 직접 대조한다. 클라이언트가 "필살기였다"고 주장할 수 없다.
+  const trained = {};
+  for (const side of ["p1", "p2"]) {
+    const hit = findTrainedSkill(match.submitted[side], match.players[side].trained ?? []);
+    if (hit) {
+      trained[side] = hit;
+      payload[side].trained_skill = hit.name;
+    }
+  }
   const judgment = await judgePayload(payload);
   match.battle.log.push({ type: "skill", who: "p1", text: `${match.players.p1.character.name}: ${match.submitted.p1}` });
   match.battle.log.push({ type: "skill", who: "p2", text: `${match.players.p2.character.name}: ${match.submitted.p2}` });
+  for (const side of ["p1", "p2"]) {
+    if (!trained[side]) continue;
+    match.battle.log.push({ type: "system", who: side, text: `⚔️ 수련한 필살기 — ${trained[side].name} 발동!` });
+  }
   resolveTurn(match.battle, judgment);
   match.revision += 1;
   match.updatedAt = Date.now();
-  match.lastTurn = { revision: match.revision, judgment, texts: { ...match.submitted } };
+  match.lastTurn = { revision: match.revision, judgment, texts: { ...match.submitted }, trained };
   match.submitted = {};
   if (match.battle.phase === "over") updateRating(match);
   else beginTurn(match.battle);
@@ -429,7 +452,10 @@ const server = http.createServer(async (request, response) => {
       const oldMatch = playerMatch.get(body.playerId);
       if (oldMatch && matches.get(oldMatch)?.battle.phase === "over") playerMatch.delete(body.playerId);
       const profile = getProfile(body.playerId, body.name || body.character.name);
-      const entry = { id: body.playerId, name: profile.name, rating: profile.rating, character: body.character };
+      const entry = {
+        id: body.playerId, name: profile.name, rating: profile.rating, character: body.character,
+        trained: sanitizeTrained(body.trained),
+      };
       const match = playerMatch.has(body.playerId) ? matches.get(playerMatch.get(body.playerId)) : queuePlayer(entry, body.mode);
       return sendJson(response, 200, match ? matchView(match, body.playerId) : { status: "waiting", profile: publicProfile(profile) });
     }

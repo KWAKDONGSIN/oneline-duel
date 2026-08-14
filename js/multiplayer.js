@@ -60,10 +60,11 @@ export function fetchProfile(name) {
   return api("/pvp/profile", { method: "POST", body: JSON.stringify({ playerId: getPlayerId(), name }) });
 }
 
-export function joinQueue(mode, character) {
+// 수련한 필살기 목록도 함께 보낸다. 발동 여부 판단은 서버가 한다.
+export function joinQueue(mode, character, trained = []) {
   return api("/pvp/queue", {
     method: "POST",
-    body: JSON.stringify({ playerId: getPlayerId(), name: character.name, character, mode }),
+    body: JSON.stringify({ playerId: getPlayerId(), name: character.name, character, mode, trained }),
   });
 }
 
