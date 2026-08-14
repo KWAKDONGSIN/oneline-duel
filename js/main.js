@@ -32,6 +32,7 @@ import {
   playFieldMusic,
   playSfx,
   playTitleMusic,
+  resumeMusic,
   setMusicEnabled,
   setSfxEnabled,
   stopMusic,
@@ -1184,8 +1185,10 @@ window.addEventListener("hashchange", () => {
 
 // 탭을 벗어나면 음악을 멈춘다. 다른 일을 하는 동안 계속 흘러나오지 않게.
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden) stopMusic();
-  else if (audioStarted && routeFromHash() === "home") playTitleMusic();
+  if (document.hidden) { stopMusic(); return; }
+  // 돌아오면 듣던 곡을 그대로 되살린다. 전투 중에 잠깐 다른 탭을 봤다고
+  // 남은 판을 무음으로 싸우게 되면 안 된다.
+  if (audioStarted) resumeMusic();
 });
 applyTheme(currentTheme());   // 저장된 테마를 첫 화면부터 적용한다
 renderRoute();

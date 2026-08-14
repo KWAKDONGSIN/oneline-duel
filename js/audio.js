@@ -326,8 +326,21 @@ function playNote(bus, freq, wave, when, duration, peak) {
   osc.stop(when + duration + 0.02);
 }
 
+// 탭을 벗어나면 음악을 끄지만, 돌아왔을 때 무슨 곡이었는지는 기억해야 한다.
+// stopMusic이 지우는 currentKey와 달리 이 값은 남는다.
+let lastSpec = null;
+let lastKey = "";
+
+// 꺼져 있던 음악을 마지막에 듣던 곡으로 되살린다. 이미 나오고 있으면 아무것도 하지 않는다.
+export function resumeMusic() {
+  if (!ctx || currentMusic || !lastSpec) return;
+  startMusic(lastSpec, lastKey);
+}
+
 function startMusic(spec, key) {
   if (!ctx) return;
+  lastSpec = spec;
+  lastKey = key;
   if (currentKey === key && currentMusic) return;   // 같은 곡이면 이어서 재생
   stopMusic();
   currentKey = key;
