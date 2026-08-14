@@ -115,7 +115,11 @@ async function requestOnce(url, payload) {
       signal: controller.signal,
     });
     if (!response.ok) throw new Error(`판정 서버 오류: ${response.status}`);
-    return await response.json();
+    const result = await response.json();
+    // 드물게 내용이 빈 판정이 돌아온다. 그대로 쓰면 아무 일도 없는 턴이 되어
+    // 플레이어가 무엇이 일어났는지 알 수 없으므로, 실패로 보고 약식 판정으로 넘긴다.
+    if (!result?.narration) throw new Error("빈 판정");
+    return result;
   } finally {
     clearTimeout(timer);
   }

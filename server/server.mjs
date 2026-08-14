@@ -189,8 +189,10 @@ async function delegateJudgment(payload) {
 async function judgePayload(payload) {
   if (env.MOCK === "1") return createMockJudgment(payload);
   try {
-    if (env.OPENAI_API_KEY) return await requestAiJudgment(payload);
-    return await delegateJudgment(payload);
+    const result = env.OPENAI_API_KEY ? await requestAiJudgment(payload) : await delegateJudgment(payload);
+    // 빈 판정이 오면 아무 일도 없는 턴이 된다. 약식 판정으로 대신한다.
+    if (!result?.narration) throw new Error("빈 판정");
+    return result;
   } catch {
     return createMockJudgment(payload);
   }
