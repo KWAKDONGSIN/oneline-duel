@@ -770,8 +770,18 @@ function renderOnlineResult(state) {
       <div class="result-actions">
         <button class="button primary" data-action="same-mode">다시 매칭</button>
         <button class="button" data-action="online-home">홈으로</button>
+        <button class="button" data-action="online-share">📤 결과 공유</button>
       </div>
     </div>`;
+  document.querySelector('[data-action="online-share"]').addEventListener("click", () => {
+    const opponentName = state.opponent.character.name;
+    shareResult(shareCard({
+      headline: draw ? `${opponentName}와 무승부` : won ? `${opponentName} 격파!` : `${opponentName}에게 패배`,
+      record: state.mode === "ranked" ? `랭크전 ${delta >= 0 ? "+" : ""}${delta}점` : "일반전",
+      myLine: myLastLine(state.battle.log, state.side),
+      narration: shareableNarration(state.battle.log),
+    }));
+  });
   document.querySelector('[data-action="same-mode"]').addEventListener("click", async () => {
     await leaveMatch().catch(() => {});
     startOnlineMatch(state.mode);
@@ -781,6 +791,46 @@ function renderOnlineResult(state) {
     renderHome();
     navigate("home");
   });
+}
+
+// ── 결과 공유 ───────────────────────────────────────────────────
+// 이 게임이 매 판 만들어내는 AI 내레이션은 세상에 하나뿐인 글이다. 한 번 보여주고
+// 버리는 대신, 내가 쓴 한 줄과 함께 옮길 수 있는 형태로 묶는다.
+function shareCard({ headline, record, myLine, narration, footer }) {
+  const lines = ["🌈 무지개 반사", "", headline];
+  if (record) lines.push(record);
+  if (myLine) lines.push("", "▸ 내가 쓴 한 줄", `“${myLine}”`);
+  if (narration) lines.push("", "▸ AI 심판", narration);
+  if (footer) lines.push("", footer);
+  lines.push("", location.origin + location.pathname);
+  return lines.join("\n");
+}
+
+// 폰에서는 기본 공유 시트를, PC에서는 클립보드를 쓴다.
+async function shareResult(text) {
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: "무지개 반사", text });
+      return;
+    }
+    await navigator.clipboard.writeText(text);
+    showToast("결과를 복사했습니다. 붙여넣기로 자랑하세요");
+  } catch {
+    // 사용자가 공유창을 닫은 경우까지 오류로 알릴 필요는 없다
+  }
+}
+
+// 로그에서 마지막으로 내가 쓴 문장만 뽑는다 ("이름: 문장"에서 문장 부분).
+function myLastLine(log, side = "p1") {
+  const entry = [...log].reverse().find((item) => item.type === "skill" && item.who === side);
+  return entry ? entry.text.replace(/^[^:]*:\s*/, "") : "";
+}
+
+// 공유할 만한 내레이션만 고른다. 판정 서버가 죽었을 때 나오는 약식 문구는
+// 자랑할 내용이 아니므로 통째로 뺀다.
+function shareableNarration(log) {
+  const text = [...log].reverse().find((entry) => entry.type === "narration")?.text ?? "";
+  return text.startsWith("심판이 자리를 비웠다") ? "" : text;
 }
 
 function renderResult() {
@@ -813,7 +863,7 @@ function renderResult() {
         <button class="button primary" data-action="new-round">🌈 처음부터 다시 — ${(loadData().progress.round ?? 1) + 1}회차 도전</button>` : ""}
         <button class="button ${hasNext ? "" : "primary"}" data-action="retry">다시 도전</button>
         <button class="button" data-action="home">홈으로</button>
-        <button class="button" data-action="copy">로그 복사</button>
+        <button class="button" data-action="share">📤 결과 공유</button>
       </div>
     </div>`;
   document.querySelector('[data-action="next-boss"]')?.addEventListener("click",
@@ -829,9 +879,18 @@ function renderResult() {
   document.querySelector('[data-action="retry"]').addEventListener("click",
     () => startBattle(loadData().character, bossIndex));
   document.querySelector('[data-action="home"]').addEventListener("click", () => { renderHome(); navigate("home"); });
-  document.querySelector('[data-action="copy"]').addEventListener("click", async () => {
-    await navigator.clipboard.writeText(battle.log.map((entry) => entry.text).join("\n"));
-    showToast("전투 기록이 복사되었습니다");
+  document.querySelector('[data-action="share"]').addEventListener("click", () => {
+    const headline = draw ? `${boss.emoji} ${boss.name}와 무승부`
+      : won ? `${boss.emoji} ${boss.name} 격파!`
+      : `${boss.emoji} ${boss.name}에게 패배`;
+    const wounds = battle.p1.wounds ? `부상 ${battle.p1.wounds}` : "무상처";
+    shareResult(shareCard({
+      headline,
+      record: `${battle.turn}턴 · ${wounds}${battle.p1.lastStandUsed ? " · 발악 사용" : ""}`,
+      myLine: myLastLine(battle.log),
+      narration: shareableNarration(battle.log),
+      footer: won && !hasNext ? "🌈 일곱 색을 모두 꺾었다" : "",
+    }));
   });
 }
 
