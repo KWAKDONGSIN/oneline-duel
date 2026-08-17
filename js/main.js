@@ -23,7 +23,7 @@ import {
   submitOnlineAction,
   wakePvpServer,
 } from "./multiplayer.js";
-import * as render3d from "./render3d.js";
+import * as render3d from "./render3d.js?v=20260817f";
 import {
   bossMusicList,
   fieldMusicList,
