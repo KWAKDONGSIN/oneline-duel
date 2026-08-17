@@ -408,10 +408,11 @@ async function animateMotion({ actor: side, motion }) {
   resetPose(actor);
 }
 
-function renderLoop() {
+function renderLoop(timestamp) {
   if (!running) return;
   requestAnimationFrame(renderLoop);
-  const elapsed = clock.getElapsedTime();
+  clock.update(timestamp);
+  const elapsed = clock.getElapsed();
   if (phase === "typing" && actors) {
     orbitAngle = elapsed * 0.105;
     camera.position.x = Math.sin(orbitAngle) * 0.65;
@@ -517,7 +518,7 @@ export function init(target) {
   resizeObserver = new ResizeObserver(resizeToContainer);
   resizeObserver.observe(target);
   resizeToContainer();
-  clock = new THREE.Clock();
+  clock = new THREE.Timer();
   if (!running) { running = true; renderLoop(); }
 }
 

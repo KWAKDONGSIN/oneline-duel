@@ -93,6 +93,16 @@ export function routeFromHash(hash = window.location.hash) {
 }
 
 export function renderRoute(route = routeFromHash()) {
+  // 홈 이외의 화면은 버튼을 눌렀을 때 동적으로 내용이 만들어진다.
+  // 해당 주소에서 새로고침하거나 주소를 직접 열면 전투 상태와 화면 내용이 없으므로
+  // 빈 화면을 노출하지 않고 저장된 캐릭터·진행도를 그대로 둔 채 홈으로 복귀한다.
+  const content = document.querySelector(`#${route}-content`);
+  if (route !== "home" && !content?.childElementCount) {
+    route = "home";
+    if (window.location.hash !== "#home") {
+      window.history.replaceState(null, "", "#home");
+    }
+  }
   document.querySelectorAll(".screen").forEach((screen) => {
     screen.hidden = screen.id !== route;
   });

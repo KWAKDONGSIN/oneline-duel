@@ -41,5 +41,5 @@ const server = http.createServer((request, response) => {
 });
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`개초딩게임 웹 서버: http://localhost:${PORT}`);
+  console.log(`무지개 반사 웹 서버: http://localhost:${PORT}`);
 });
